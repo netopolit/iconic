@@ -15,13 +15,15 @@
 		"@codemirror/language": "^6.11.2",
 		"@codemirror/state": "^6.5.0",
 		"@codemirror/view": "^6.38.0",
+		"@eslint/js": "^10.0.1",
+		"@stylistic/eslint-plugin-js": "^4.4.1",
 		"@types/node": "^16.18.98",
-		"@typescript-eslint/eslint-plugin": "5.29.0",
-		"@typescript-eslint/parser": "5.29.0",
 		"builtin-modules": "3.3.0",
 		"esbuild": "^0.27.0",
+		"eslint": "^9.39.2",
 		"obsidian": "^1.11.4",
 		"tslib": "2.4.0",
-		"typescript": "4.7.4"
+		"typescript": "4.7.4",
+		"typescript-eslint": "^8.55.0"
 	}
 }
