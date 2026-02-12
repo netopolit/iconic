@@ -27,26 +27,30 @@ export default class IconPackManager {
 		if (!await adapter.exists(this.iconBasePath)) return;
 
 		const listing = await adapter.list(this.iconBasePath);
-		for (const dir of listing.folders) {
-			const metaPath = normalizePath(dir + '/meta.json');
-			if (!await adapter.exists(metaPath)) continue;
+		await Promise.all(listing.folders.map(dir => this.loadPack(adapter, dir)));
+	}
 
-			try {
-				const metaJson = await adapter.read(metaPath);
-				const pack: InstalledIconPack = JSON.parse(metaJson);
-				this.installedPacks.set(pack.id, pack);
+	/**
+	 * Load a single icon pack from its directory.
+	 */
+	private async loadPack(adapter: { exists: (path: string) => Promise<boolean>; read: (path: string) => Promise<string> }, dir: string): Promise<void> {
+		const metaPath = normalizePath(dir + '/meta.json');
+		if (!await adapter.exists(metaPath)) return;
 
-				// Register each icon with Obsidian
-				for (const iconName of pack.iconNames) {
-					const svgPath = normalizePath(dir + '/' + iconName + '.svg');
-					if (await adapter.exists(svgPath)) {
-						const svgContent = await adapter.read(svgPath);
-						addIcon(pack.prefix + iconName, svgContent);
-					}
-				}
-			} catch (e) {
-				console.error(`Iconic: Failed to load icon pack from ${dir}`, e);
+		try {
+			const metaJson = await adapter.read(metaPath);
+			const pack: InstalledIconPack = JSON.parse(metaJson);
+			this.installedPacks.set(pack.id, pack);
+
+			// Load all icons from consolidated icons.json
+			const iconsPath = normalizePath(dir + '/icons.json');
+			const iconsJson = await adapter.read(iconsPath);
+			const icons: Record<string, string> = JSON.parse(iconsJson);
+			for (const [iconName, svgContent] of Object.entries(icons)) {
+				addIcon(pack.prefix + iconName, svgContent);
 			}
+		} catch (e) {
+			console.error(`Iconic: Failed to load icon pack from ${dir}`, e);
 		}
 	}
 
@@ -78,8 +82,9 @@ export default class IconPackManager {
 			}
 			await adapter.mkdir(packDir);
 
-			// Process and save each SVG
+			// Process each SVG and collect into a single object
 			const iconNames: string[] = [];
+			const icons: Record<string, string> = {};
 			const prefix = packMeta.path + '/';
 			for (const [filePath, fileData] of Object.entries(files)) {
 				if (!filePath.endsWith('.svg')) continue;
@@ -99,12 +104,17 @@ export default class IconPackManager {
 				const processed = processPackSvg(svgString);
 
 				if (processed) {
-					const savePath = normalizePath(packDir + '/' + iconName + '.svg');
-					await adapter.write(savePath, processed);
+					icons[iconName] = processed;
 					iconNames.push(iconName);
 					addIcon(packMeta.prefix + iconName, processed);
 				}
 			}
+
+			// Write all icons to a single file
+			await adapter.write(
+				normalizePath(packDir + '/icons.json'),
+				JSON.stringify(icons),
+			);
 
 			// Save meta.json
 			const installedPack: InstalledIconPack = {
