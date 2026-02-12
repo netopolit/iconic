@@ -102,15 +102,17 @@ export function processPackSvg(svgString: string): string | null {
 	let innerSvg = innerMatch[1].trim();
 	if (!innerSvg) return null;
 
-	// Replace hard-coded fills/strokes with currentColor for theme compatibility
-	innerSvg = innerSvg.replace(/fill="(?!none|currentColor)[^"]*"/g, 'fill="currentColor"');
+	// Replace hard-coded strokes with currentColor for theme compatibility
 	innerSvg = innerSvg.replace(/stroke="(?!none|currentColor)[^"]*"/g, 'stroke="currentColor"');
 
-	// Scale content to fit 100x100 viewBox
+	// Wrap in <g fill="currentColor"> so elements without explicit fill inherit currentColor
+	// (SVG fill defaults to black, which ignores CSS color property)
 	if (vbWidth !== 100 || vbHeight !== 100) {
 		const scaleX = 100 / vbWidth;
 		const scaleY = 100 / vbHeight;
-		innerSvg = `<g transform="scale(${scaleX}, ${scaleY})">${innerSvg}</g>`;
+		innerSvg = `<g transform="scale(${scaleX}, ${scaleY})" fill="currentColor">${innerSvg}</g>`;
+	} else {
+		innerSvg = `<g fill="currentColor">${innerSvg}</g>`;
 	}
 
 	return innerSvg;
