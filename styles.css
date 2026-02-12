@@ -691,6 +691,10 @@ body[data-theme="Ukiyo"] .workspace-leaf > .workspace-leaf-content[data-type="fi
 	flex-wrap: wrap;
 	justify-content: flex-start;
 }
+.iconic-browse-mode .iconic-search-result {
+	min-width: calc(var(--icon-l) * 1.25);
+	min-height: calc(var(--icon-l) * 1.25);
+}
 .is-phone .iconic-search-results.iconic-browse-mode {
 	max-height: 250px;
 }

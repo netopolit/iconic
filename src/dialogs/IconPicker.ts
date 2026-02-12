@@ -760,14 +760,37 @@ export default class IconPicker extends Modal {
 		const scrollLeft = settingEl.scrollLeft;
 		const scrollTop = settingEl.scrollTop;
 
-		// Populate icon buttons (chunked in browse mode for large packs)
+		// Populate icon buttons
 		this.searchResultsSetting.clear();
+		const deferredIcons: [HTMLElement, string][] = [];
+		for (const [icon, iconName] of this.searchResults) {
+			this.searchResultsSetting.addExtraButton(iconButton => {
+				iconButton.setTooltip(iconName, {
+					delay: 300,
+					placement: Platform.isPhone ? 'top' : 'bottom',
+				});
+				const iconEl = iconButton.extraSettingsEl;
+				iconEl.addClass('iconic-search-result');
+				iconEl.tabIndex = -1;
+				deferredIcons.push([iconEl, icon]);
+
+				if (Platform.isPhone) this.iconManager.setEventListener(iconEl, 'contextmenu', () => {
+					navigator.vibrate?.(100); // Not supported on iOS
+					displayTooltip(iconEl, iconName, { placement: 'top' });
+				});
+			});
+		}
+
+		// Render icons (chunked in browse mode for large packs)
 		const BROWSE_BATCH_SIZE = 200;
 		const initialCount = isBrowseMode
-			? Math.min(BROWSE_BATCH_SIZE, this.searchResults.length)
-			: this.searchResults.length;
+			? Math.min(BROWSE_BATCH_SIZE, deferredIcons.length)
+			: deferredIcons.length;
 		for (let i = 0; i < initialCount; i++) {
-			this.renderSearchResult(this.searchResults[i]);
+			const [iconEl, icon] = deferredIcons[i];
+			this.iconManager.refreshIcon({ icon, color: this.color ?? null }, iconEl, () => {
+				this.closeAndSave(icon, this.color);
+			});
 		}
 
 		// Restore UI state
@@ -785,48 +808,27 @@ export default class IconPicker extends Modal {
 			});
 		}
 
-		// Schedule remaining browse icons in chunks
-		if (this.searchResults.length > initialCount) {
-			this.scheduleBrowseRender(initialCount, BROWSE_BATCH_SIZE);
+		// Schedule remaining icon renders in chunks
+		if (deferredIcons.length > initialCount) {
+			this.scheduleBrowseRender(deferredIcons, initialCount, BROWSE_BATCH_SIZE);
 		}
 	}
 
 	/**
-	 * Render a single icon button into the search results.
+	 * Progressively render deferred browse icons in chunks via requestAnimationFrame.
 	 */
-	private renderSearchResult([icon, iconName]: [string, string]): void {
-		this.searchResultsSetting.addExtraButton(iconButton => {
-			iconButton.setTooltip(iconName, {
-				delay: 300,
-				placement: Platform.isPhone ? 'top' : 'bottom',
-			});
-			const iconEl = iconButton.extraSettingsEl;
-			iconEl.addClass('iconic-search-result');
-			iconEl.tabIndex = -1;
-
-			this.iconManager.refreshIcon({ icon: icon, color: this.color ?? null }, iconEl, () => {
-				this.closeAndSave(icon, this.color);
-			});
-
-			if (Platform.isPhone) this.iconManager.setEventListener(iconEl, 'contextmenu', () => {
-				navigator.vibrate?.(100); // Not supported on iOS
-				displayTooltip(iconEl, iconName, { placement: 'top' });
-			});
-		});
-	}
-
-	/**
-	 * Progressively render remaining browse icons in chunks via requestAnimationFrame.
-	 */
-	private scheduleBrowseRender(startIndex: number, batchSize: number): void {
+	private scheduleBrowseRender(deferredIcons: [HTMLElement, string][], startIndex: number, batchSize: number): void {
 		this.browseRenderTimer = requestAnimationFrame(() => {
 			this.browseRenderTimer = null;
-			const endIndex = Math.min(startIndex + batchSize, this.searchResults.length);
+			const endIndex = Math.min(startIndex + batchSize, deferredIcons.length);
 			for (let i = startIndex; i < endIndex; i++) {
-				this.renderSearchResult(this.searchResults[i]);
+				const [iconEl, icon] = deferredIcons[i];
+				this.iconManager.refreshIcon({ icon, color: this.color ?? null }, iconEl, () => {
+					this.closeAndSave(icon, this.color);
+				});
 			}
-			if (endIndex < this.searchResults.length) {
-				this.scheduleBrowseRender(endIndex, batchSize);
+			if (endIndex < deferredIcons.length) {
+				this.scheduleBrowseRender(deferredIcons, endIndex, batchSize);
 			}
 		});
 	}
