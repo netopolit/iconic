@@ -1,5 +1,6 @@
 import { Command, Notice, Platform, Plugin, TAbstractFile, TFile, TFolder, View, WorkspaceFloating, WorkspaceLeaf, WorkspaceRoot, getIconIds, getLanguage, normalizePath } from 'obsidian';
 import IconicSettingTab from 'src/IconicSettingTab';
+import ColorUtils from 'src/ColorUtils';
 import EMOJIS from 'src/Emojis';
 import STRINGS from 'src/Strings';
 import MenuManager from 'src/managers/MenuManager';
@@ -407,6 +408,7 @@ export default class IconicPlugin extends Plugin {
 		});
 
 		this.registerEvent(this.app.workspace.on('css-change', () => {
+			ColorUtils.clearCache();
 			this.refreshManagers();
 			this.refreshBody();
 		}));
@@ -665,7 +667,7 @@ export default class IconicPlugin extends Plugin {
 	 * Refresh all icon managers, or a specific group of them.
 	 */
 	refreshManagers(...categories: Category[]): void {
-		if (categories) {
+		if (categories.length === 0) {
 			categories = ['app', 'tab', 'file', 'folder', 'tag', 'property', 'ribbon'];
 		}
 		const managers = new Set<IconManager | undefined>();
@@ -1444,14 +1446,6 @@ export default class IconicPlugin extends Plugin {
 		if (this.isSaving) return;
 		this.isSaving = true;
 		this.pruneSettings();
-
-		// Sort item IDs for human-readability
-		this.settings.appIcons = Object.fromEntries(Object.entries(this.settings.appIcons).sort());
-		this.settings.tabIcons = Object.fromEntries(Object.entries(this.settings.tabIcons).sort());
-		this.settings.fileIcons = Object.fromEntries(Object.entries(this.settings.fileIcons).sort());
-		this.settings.bookmarkIcons = Object.fromEntries(Object.entries(this.settings.bookmarkIcons).sort());
-		this.settings.propertyIcons = Object.fromEntries(Object.entries(this.settings.propertyIcons).sort());
-		this.settings.ribbonIcons = Object.fromEntries(Object.entries(this.settings.ribbonIcons).sort());
 
 		// Save and backup settings
 		await this.saveData(this.settings);

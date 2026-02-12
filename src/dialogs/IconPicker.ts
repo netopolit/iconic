@@ -347,7 +347,7 @@ export default class IconPicker extends Modal {
 					this.colorResetButton.extraSettingsEl.removeClass('iconic-invisible');
 					this.colorResetButton.extraSettingsEl.tabIndex = 0;
 					this.updateColorTooltip();
-					this.updateSearchResults();
+					this.updateSearchResultColors();
 				});
 				this.colorPicker = colorPicker;
 			})
@@ -567,7 +567,7 @@ export default class IconPicker extends Modal {
 						this.colorResetButton.extraSettingsEl.tabIndex = 0;
 					}
 					this.updateColorPicker();
-					this.updateSearchResults();
+					this.updateSearchResultColors();
 				});
 				// @ts-expect-error (Private API)
 				this.iconManager.refreshIcon({ icon: 'lucide-paint-bucket', color }, menuItem.iconEl);
@@ -588,7 +588,7 @@ export default class IconPicker extends Modal {
 		this.colorResetButton.extraSettingsEl.removeClass('iconic-invisible');
 		this.colorResetButton.extraSettingsEl.tabIndex = 0;
 		this.updateColorPicker();
-		this.updateSearchResults();
+		this.updateSearchResultColors();
 	}
 
 	/**
@@ -603,7 +603,7 @@ export default class IconPicker extends Modal {
 		this.colorResetButton.extraSettingsEl.removeClass('iconic-invisible');
 		this.colorResetButton.extraSettingsEl.tabIndex = 0;
 		this.updateColorPicker();
-		this.updateSearchResults();
+		this.updateSearchResultColors();
 	}
 
 	/**
@@ -614,7 +614,7 @@ export default class IconPicker extends Modal {
 		this.colorResetButton.extraSettingsEl.addClass('iconic-invisible');
 		this.colorResetButton.extraSettingsEl.tabIndex = -1;
 		this.updateColorPicker();
-		this.updateSearchResults();
+		this.updateSearchResultColors();
 	}
 
 	private toggleMobileSearchMode(): void {
@@ -720,6 +720,34 @@ export default class IconPicker extends Modal {
 			displayTooltip(this.colorPickerEl, tooltip, { delay: 1 });
 		} else {
 			setTooltip(this.colorPickerEl, tooltip, { delay: 300 });
+		}
+	}
+
+	/**
+	 * Update only the colors of existing search result icons, without rebuilding the DOM.
+	 */
+	private updateSearchResultColors(): void {
+		const rgb = this.color ? ColorUtils.toRgb(this.color) : null;
+		const hsl = this.color ? ColorUtils.toHslArray(this.color) : null;
+		const children = this.searchResultsSetting.controlEl.children;
+		for (let i = 0; i < children.length; i++) {
+			const el = children[i] as HTMLElement;
+			const svgEl = el.find('.svg-icon');
+			if (svgEl) {
+				if (rgb) {
+					svgEl.style.setProperty('color', rgb);
+				} else {
+					svgEl.style.removeProperty('color');
+				}
+			}
+			const emojiEl = el.find('.iconic-emoji');
+			if (emojiEl) {
+				if (hsl) {
+					(emojiEl as HTMLElement).style.filter = `grayscale() sepia() hue-rotate(${hsl[0] - 50}deg) saturate(${hsl[1] * 5}%)`;
+				} else {
+					(emojiEl as HTMLElement).style.filter = '';
+				}
+			}
 		}
 	}
 

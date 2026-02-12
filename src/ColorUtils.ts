@@ -180,12 +180,26 @@ const REGEX_COLOR_MIX = /color-mix\(in srgb, rgba?\((\d+), (\d+), (\d+)(?:, ([\d
  */
 export default class ColorUtils {
 	private static readonly convertEl = document.createElement('div');
+	private static readonly rgbCache = new Map<string, string>();
+	private static readonly hslCache = new Map<string, [number, number, number]>();
+
+	/**
+	 * Clear cached color conversions. Call when CSS theme changes.
+	 */
+	static clearCache(): void {
+		this.rgbCache.clear();
+		this.hslCache.clear();
+	}
 
 	/**
 	 * Convert color into rgb/rgba() string.
 	 * @param color a color name, or a specific CSS color
 	 */
 	static toRgb(color: string | null | undefined): string {
+		if (color && this.rgbCache.has(color)) {
+			return this.rgbCache.get(color)!;
+		}
+
 		let cssVar = '--icon-color';
 		let cssColor = RGB_FALLBACK;
 		if (!color) {
@@ -206,13 +220,19 @@ export default class ColorUtils {
 		const rgbValue = this.convertEl.style.color;
 
 		// Value might still be wrapped in color-mix()
+		let result: string;
 		if (rgbValue.startsWith('color-mix')) {
-			return this.mixToRgb(rgbValue);
+			result = this.mixToRgb(rgbValue);
 		} else if (rgbValue.startsWith('rgb')) {
-			return rgbValue;
+			result = rgbValue;
 		} else {
-			return RGB_FALLBACK;
+			result = RGB_FALLBACK;
 		}
+
+		if (color) {
+			this.rgbCache.set(color, result);
+		}
+		return result;
 	}
 
 	/**
@@ -233,6 +253,10 @@ export default class ColorUtils {
 	 * @see {@link https://en.wikipedia.org/wiki/HSL_and_HSV#From_RGB}
 	 */
 	static toHslArray(color: string | null | undefined): [h: number, s: number, l: number] {
+		if (color && this.hslCache.has(color)) {
+			return this.hslCache.get(color)!;
+		}
+
 		let [r, g, b] = this.toRgb(color)
 			.replaceAll(/[^\d.,]/g, '')
 			.split(',')
@@ -255,7 +279,11 @@ export default class ColorUtils {
 			case b: h = (r - g) / chroma + 4; break;
 		}
 
-		return [Math.round(h * 60), Math.round(s * 100), Math.round(l * 100)];
+		const hsl: [number, number, number] = [Math.round(h * 60), Math.round(s * 100), Math.round(l * 100)];
+		if (color) {
+			this.hslCache.set(color, hsl);
+		}
+		return hsl;
 	}
 
 	/**
