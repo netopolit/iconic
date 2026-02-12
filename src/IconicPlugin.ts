@@ -224,11 +224,12 @@ export default class IconicPlugin extends Plugin {
 		await this.loadSettings();
 		this.addSettingTab(new IconicSettingTab(this));
 
-		// Load installed icon packs early so their icons are available
+		// Start loading icon packs early so their icons are available
 		this.iconPackManager = new IconPackManager(this);
-		await this.iconPackManager.loadInstalledPacks();
+		const packsReady = this.iconPackManager.loadInstalledPacks();
 
-		this.app.workspace.onLayoutReady(() => {
+		this.app.workspace.onLayoutReady(async () => {
+			await packsReady;
 			// Build a map of pack prefixes for icon name generation
 			const packPrefixes = new Map<string, string>();
 			for (const pack of this.iconPackManager.getInstalledPacks()) {
