@@ -97,6 +97,8 @@ export default class IconPicker extends Modal {
 	private colorPickerHovered = false;
 	private browseRenderTimer: number | null = null;
 	private readonly searchResults: [icon: string, iconName: string][] = [];
+	private cachedPackFilter: string | null | undefined;
+	private cachedFilteredIcons: [string, string][] = [];
 
 	private constructor(
 		plugin: IconicPlugin,
@@ -427,6 +429,34 @@ export default class IconPicker extends Modal {
 			}
 		}, { passive: true });
 
+		// Event delegation for browse mode icons (click, tooltip, contextmenu)
+		this.iconManager.setEventListener(this.searchResultsSetting.controlEl, 'click', event => {
+			const target = (event.target as HTMLElement).closest('.iconic-search-result') as HTMLElement | null;
+			if (target?.dataset.icon) {
+				this.closeAndSave(target.dataset.icon, this.color);
+			}
+		}, { capture: true });
+		this.iconManager.setEventListener(this.searchResultsSetting.controlEl, 'mouseover', event => {
+			if (!this.searchResultsSetting.settingEl.hasClass('iconic-browse-mode')) return;
+			const target = (event.target as HTMLElement).closest('.iconic-search-result') as HTMLElement | null;
+			if (target?.ariaLabel) {
+				displayTooltip(target, target.ariaLabel, {
+					delay: 300,
+					placement: Platform.isPhone ? 'top' : 'bottom',
+				});
+			}
+		});
+		if (Platform.isPhone) {
+			this.iconManager.setEventListener(this.searchResultsSetting.controlEl, 'contextmenu', event => {
+				if (!this.searchResultsSetting.settingEl.hasClass('iconic-browse-mode')) return;
+				const target = (event.target as HTMLElement).closest('.iconic-search-result') as HTMLElement | null;
+				if (target?.ariaLabel) {
+					navigator.vibrate?.(100);
+					displayTooltip(target, target.ariaLabel, { placement: 'top' });
+				}
+			});
+		}
+
 		// Match styling of bookmark edit dialog
 		const buttonContainerEl = this.modalEl.createDiv({ cls: 'modal-button-container' });
 		const buttonRowEl = Platform.isMobile ? buttonContainerEl.createDiv({ cls: 'iconic-button-row' }) : null;
@@ -705,15 +735,26 @@ export default class IconPicker extends Modal {
 
 		const query = this.searchField.getValue();
 		const packFilter = this.plugin.settings.dialogState.packFilter;
-		let filteredIcons: Iterable<[string, string]> = ICONS;
 
-		// Filter icons by pack
-		if (packFilter === 'lucide') {
-			filteredIcons = [...ICONS].filter(([id]) => id.startsWith('lucide-'));
-		} else if (packFilter) {
-			const pack = this.plugin.iconPackManager.getInstalledPacks().find(p => p.id === packFilter);
-			if (pack) {
-				filteredIcons = [...ICONS].filter(([id]) => id.startsWith(pack.prefix));
+		// Cache filtered icons — only recompute when pack filter changes
+		if (packFilter !== this.cachedPackFilter) {
+			this.cachedPackFilter = packFilter;
+			this.cachedFilteredIcons = [];
+			if (packFilter === 'lucide') {
+				for (const [id, name] of ICONS) {
+					if (id.startsWith('lucide-')) this.cachedFilteredIcons.push([id, name]);
+				}
+			} else if (packFilter) {
+				const pack = this.plugin.iconPackManager.getInstalledPacks().find(p => p.id === packFilter);
+				if (pack) {
+					for (const [id, name] of ICONS) {
+						if (id.startsWith(pack.prefix)) this.cachedFilteredIcons.push([id, name]);
+					}
+				}
+			} else {
+				for (const entry of ICONS) {
+					this.cachedFilteredIcons.push(entry);
+				}
 			}
 		}
 
@@ -721,28 +762,32 @@ export default class IconPicker extends Modal {
 		const isBrowseMode = !!packFilter;
 		this.searchResultsSetting.settingEl.toggleClass('iconic-browse-mode', isBrowseMode);
 
-		const iconEntries = [
-			...(this.plugin.settings.dialogState.iconMode ? filteredIcons : []),
-			...(!isBrowseMode && this.plugin.settings.dialogState.emojiMode ? EMOJIS : []),
-		];
-
 		this.searchResults.length = 0;
 
 		if (isBrowseMode && !query) {
 			// Show all pack icons — no fuzzy search or sorting needed
-			for (const iconEntry of iconEntries) {
-				this.searchResults.push(iconEntry);
+			if (this.plugin.settings.dialogState.iconMode) {
+				for (const entry of this.cachedFilteredIcons) {
+					this.searchResults.push(entry);
+				}
 			}
 		} else if (query) {
+			// Build entries to search
+			const iconEntries: Iterable<[string, string]>[] = [];
+			if (this.plugin.settings.dialogState.iconMode) iconEntries.push(this.cachedFilteredIcons);
+			if (!isBrowseMode && this.plugin.settings.dialogState.emojiMode) iconEntries.push(EMOJIS);
+
 			// Search all icon names
 			const fuzzySearch = prepareFuzzySearch(query);
 			const matches: [score: number, iconEntry: [string, string]][] = [];
-			for (const [icon, iconName] of iconEntries) {
-				if (query === icon) { // Recognize emoji input
-					matches.push([0, [icon, iconName]]);
-				} else {
-					const fuzzyMatch = fuzzySearch(iconName);
-					if (fuzzyMatch) matches.push([fuzzyMatch.score, [icon, iconName]]);
+			for (const source of iconEntries) {
+				for (const [icon, iconName] of source) {
+					if (query === icon) { // Recognize emoji input
+						matches.push([0, [icon, iconName]]);
+					} else {
+						const fuzzyMatch = fuzzySearch(iconName);
+						if (fuzzyMatch) matches.push([fuzzyMatch.score, [icon, iconName]]);
+					}
 				}
 			}
 			matches.sort(([scoreA,], [scoreB,]) => scoreA > scoreB ? -1 : +1);
@@ -763,22 +808,39 @@ export default class IconPicker extends Modal {
 		// Populate icon buttons
 		this.searchResultsSetting.clear();
 		const deferredIcons: [HTMLElement, string][] = [];
-		for (const [icon, iconName] of this.searchResults) {
-			this.searchResultsSetting.addExtraButton(iconButton => {
-				iconButton.setTooltip(iconName, {
-					delay: 300,
-					placement: Platform.isPhone ? 'top' : 'bottom',
-				});
-				const iconEl = iconButton.extraSettingsEl;
-				iconEl.addClass('iconic-search-result');
-				iconEl.tabIndex = -1;
-				deferredIcons.push([iconEl, icon]);
 
-				if (Platform.isPhone) this.iconManager.setEventListener(iconEl, 'contextmenu', () => {
-					navigator.vibrate?.(100); // Not supported on iOS
-					displayTooltip(iconEl, iconName, { placement: 'top' });
+		if (isBrowseMode && this.searchResults.length > 0) {
+			// Browse mode: raw divs via DocumentFragment (no ExtraButtonComponent overhead)
+			const fragment = document.createDocumentFragment();
+			for (const [icon, iconName] of this.searchResults) {
+				const div = document.createElement('div');
+				div.className = 'clickable-icon extra-setting-button iconic-search-result';
+				div.dataset.icon = icon;
+				div.ariaLabel = iconName;
+				div.tabIndex = -1;
+				fragment.appendChild(div);
+				deferredIcons.push([div, icon]);
+			}
+			controlEl.appendChild(fragment);
+		} else {
+			// Standard mode: use addExtraButton for ≤maxSearchResults items
+			for (const [icon, iconName] of this.searchResults) {
+				this.searchResultsSetting.addExtraButton(iconButton => {
+					iconButton.setTooltip(iconName, {
+						delay: 300,
+						placement: Platform.isPhone ? 'top' : 'bottom',
+					});
+					const iconEl = iconButton.extraSettingsEl;
+					iconEl.addClass('iconic-search-result');
+					iconEl.tabIndex = -1;
+					deferredIcons.push([iconEl, icon]);
+
+					if (Platform.isPhone) this.iconManager.setEventListener(iconEl, 'contextmenu', () => {
+						navigator.vibrate?.(100); // Not supported on iOS
+						displayTooltip(iconEl, iconName, { placement: 'top' });
+					});
 				});
-			});
+			}
 		}
 
 		// Render icons (chunked in browse mode for large packs)
@@ -788,9 +850,14 @@ export default class IconPicker extends Modal {
 			: deferredIcons.length;
 		for (let i = 0; i < initialCount; i++) {
 			const [iconEl, icon] = deferredIcons[i];
-			this.iconManager.refreshIcon({ icon, color: this.color ?? null }, iconEl, () => {
-				this.closeAndSave(icon, this.color);
-			});
+			if (isBrowseMode) {
+				// No per-element click handler — event delegation handles it
+				this.iconManager.refreshIcon({ icon, color: this.color ?? null }, iconEl);
+			} else {
+				this.iconManager.refreshIcon({ icon, color: this.color ?? null }, iconEl, () => {
+					this.closeAndSave(icon, this.color);
+				});
+			}
 		}
 
 		// Restore UI state
@@ -810,25 +877,29 @@ export default class IconPicker extends Modal {
 
 		// Schedule remaining icon renders in chunks
 		if (deferredIcons.length > initialCount) {
-			this.scheduleBrowseRender(deferredIcons, initialCount, BROWSE_BATCH_SIZE);
+			this.scheduleBrowseRender(deferredIcons, initialCount, BROWSE_BATCH_SIZE, isBrowseMode);
 		}
 	}
 
 	/**
 	 * Progressively render deferred browse icons in chunks via requestAnimationFrame.
 	 */
-	private scheduleBrowseRender(deferredIcons: [HTMLElement, string][], startIndex: number, batchSize: number): void {
+	private scheduleBrowseRender(deferredIcons: [HTMLElement, string][], startIndex: number, batchSize: number, isBrowseMode: boolean): void {
 		this.browseRenderTimer = requestAnimationFrame(() => {
 			this.browseRenderTimer = null;
 			const endIndex = Math.min(startIndex + batchSize, deferredIcons.length);
 			for (let i = startIndex; i < endIndex; i++) {
 				const [iconEl, icon] = deferredIcons[i];
-				this.iconManager.refreshIcon({ icon, color: this.color ?? null }, iconEl, () => {
-					this.closeAndSave(icon, this.color);
-				});
+				if (isBrowseMode) {
+					this.iconManager.refreshIcon({ icon, color: this.color ?? null }, iconEl);
+				} else {
+					this.iconManager.refreshIcon({ icon, color: this.color ?? null }, iconEl, () => {
+						this.closeAndSave(icon, this.color);
+					});
+				}
 			}
 			if (endIndex < deferredIcons.length) {
-				this.scheduleBrowseRender(deferredIcons, endIndex, batchSize);
+				this.scheduleBrowseRender(deferredIcons, endIndex, batchSize, isBrowseMode);
 			}
 		});
 	}
