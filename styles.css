@@ -681,6 +681,20 @@ body[data-theme="Ukiyo"] .workspace-leaf > .workspace-leaf-content[data-type="fi
 	color: var(--text-muted);
 }
 
+/* Browse mode (pack selected) */
+.iconic-search-results.iconic-browse-mode {
+	overflow-x: hidden;
+	overflow-y: auto;
+	max-height: 300px;
+}
+.iconic-search-results.iconic-browse-mode > .setting-item-control {
+	flex-wrap: wrap;
+	justify-content: flex-start;
+}
+.is-phone .iconic-search-results.iconic-browse-mode {
+	max-height: 250px;
+}
+
 /* Pack filter dropdown in icon picker */
 .iconic-icon-picker .setting-item-control > select.dropdown {
 	flex-shrink: 0;

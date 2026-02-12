@@ -138,13 +138,40 @@ export default class IconPicker extends Modal {
 	private nudgeFocus(event: KeyboardEvent): void {
 		if (!(event.target instanceof HTMLElement)) return;
 		let focusEl: Element | null = null;
+		const inResults = this.searchResultsSetting.settingEl.contains(event.target);
+		const isBrowseMode = this.searchResultsSetting.settingEl.hasClass('iconic-browse-mode');
 
 		switch (event.key) {
-			case 'ArrowUp': this.previousColor(); return;
-			case 'ArrowDown': this.nextColor(); return;
+			case 'ArrowUp': {
+				if (isBrowseMode && inResults && event.target !== this.searchResultsSetting.settingEl) {
+					const index = this.searchResultsSetting.controlEl.indexOf(event.target);
+					const itemsPerRow = this.getItemsPerRow();
+					if (index >= itemsPerRow) {
+						focusEl = this.searchResultsSetting.controlEl.children[index - itemsPerRow];
+					}
+				} else {
+					this.previousColor();
+					return;
+				}
+				break;
+			}
+			case 'ArrowDown': {
+				if (isBrowseMode && inResults && event.target !== this.searchResultsSetting.settingEl) {
+					const index = this.searchResultsSetting.controlEl.indexOf(event.target);
+					const itemsPerRow = this.getItemsPerRow();
+					const targetIndex = index + itemsPerRow;
+					if (targetIndex < this.searchResultsSetting.controlEl.childElementCount) {
+						focusEl = this.searchResultsSetting.controlEl.children[targetIndex];
+					}
+				} else {
+					this.nextColor();
+					return;
+				}
+				break;
+			}
 			case 'ArrowLeft': {
 				// Search results
-				if (this.searchResultsSetting.settingEl.contains(event.target)) {
+				if (inResults) {
 					if (event.target !== this.searchResultsSetting.settingEl && event.target.previousElementSibling) {
 						focusEl = event.target.previousElementSibling;
 					} else if (!event.repeat) {
@@ -155,7 +182,7 @@ export default class IconPicker extends Modal {
 			}
 			case 'ArrowRight': {
 				// Search results
-				if (this.searchResultsSetting.settingEl.contains(event.target)) {
+				if (inResults) {
 					if (event.target !== this.searchResultsSetting.settingEl && event.target.nextElementSibling) {
 						focusEl = event.target.nextElementSibling;
 					} else if (!event.repeat) {
@@ -168,7 +195,21 @@ export default class IconPicker extends Modal {
 		if (focusEl instanceof HTMLElement) {
 			event.preventDefault();
 			focusEl.focus();
+			if (isBrowseMode) focusEl.scrollIntoView({ block: 'nearest' });
 		}
+	}
+
+	/**
+	 * Calculate how many items fit in one row of the browse grid.
+	 */
+	private getItemsPerRow(): number {
+		const children = this.searchResultsSetting.controlEl.children;
+		if (children.length < 2) return 1;
+		const firstTop = (children[0] as HTMLElement).offsetTop;
+		for (let i = 1; i < children.length; i++) {
+			if ((children[i] as HTMLElement).offsetTop !== firstTop) return i;
+		}
+		return children.length;
 	}
 
 	/**
@@ -375,8 +416,9 @@ export default class IconPicker extends Modal {
 		this.searchResultsSetting = new Setting(this.contentEl);
 		this.searchResultsSetting.settingEl.addClass('iconic-search-results');
 		this.searchResultsSetting.settingEl.tabIndex = 0;
-		// Allow vertical scrolling to work horizontally
+		// Allow vertical scrolling to work horizontally (skip in browse mode for native vertical scroll)
 		this.iconManager.setEventListener(this.searchResultsSetting.settingEl, 'wheel', event => {
+			if (this.searchResultsSetting.settingEl.hasClass('iconic-browse-mode')) return;
 			if (this.modalEl.doc.body.hasClass('mod-rtl')) {
 				this.searchResultsSetting.settingEl.scrollLeft -= event.deltaY;
 			} else {
@@ -670,18 +712,29 @@ export default class IconPicker extends Modal {
 			}
 		}
 
+		// Browse mode: show all pack icons when a specific pack is selected
+		const isBrowseMode = !!packFilter;
+		this.searchResultsSetting.settingEl.toggleClass('iconic-browse-mode', isBrowseMode);
+
 		const iconEntries = [
 			...(this.plugin.settings.dialogState.iconMode ? filteredIcons : []),
-			...(this.plugin.settings.dialogState.emojiMode ? EMOJIS : []),
+			...(!isBrowseMode && this.plugin.settings.dialogState.emojiMode ? EMOJIS : []),
 		];
 
-		// Search all icon names
-		if (query) for (const [icon, iconName] of iconEntries) {
-			if (query === icon) { // Recognize emoji input
-				matches.push([0, [icon, iconName]]);
-			} else {
-				const fuzzyMatch = fuzzySearch(iconName);
-				if (fuzzyMatch) matches.push([fuzzyMatch.score, [icon, iconName]]);
+		if (isBrowseMode && !query) {
+			// Show all pack icons without fuzzy search
+			for (const iconEntry of iconEntries) {
+				matches.push([0, iconEntry]);
+			}
+		} else if (query) {
+			// Search all icon names
+			for (const [icon, iconName] of iconEntries) {
+				if (query === icon) { // Recognize emoji input
+					matches.push([0, [icon, iconName]]);
+				} else {
+					const fuzzyMatch = fuzzySearch(iconName);
+					if (fuzzyMatch) matches.push([fuzzyMatch.score, [icon, iconName]]);
+				}
 			}
 		}
 
@@ -690,9 +743,10 @@ export default class IconPicker extends Modal {
 
 		// Copy into an unscored array
 		this.searchResults.length = 0;
+		const maxResults = isBrowseMode && !query ? Infinity : this.plugin.settings.maxSearchResults;
 		for (const [, iconEntry] of matches) {
 			this.searchResults.push(iconEntry);
-			if (this.searchResults.length === this.plugin.settings.maxSearchResults) break;
+			if (this.searchResults.length === maxResults) break;
 		}
 
 		// Preserve UI state
@@ -700,6 +754,7 @@ export default class IconPicker extends Modal {
 		const focusedEl = this.modalEl.doc.activeElement;
 		const focusedIndex = focusedEl ? controlEl.indexOf(focusedEl) : -1;
 		const scrollLeft = settingEl.scrollLeft;
+		const scrollTop = settingEl.scrollTop;
 
 		// Populate icon buttons
 		this.searchResultsSetting.clear();
@@ -731,6 +786,7 @@ export default class IconPicker extends Modal {
 			if (iconEl instanceof HTMLElement) iconEl.focus();
 		}
 		settingEl.scrollLeft = scrollLeft;
+		settingEl.scrollTop = scrollTop;
 
 		// Use an invisible button to preserve height
 		if (this.searchResults.length === 0) {
