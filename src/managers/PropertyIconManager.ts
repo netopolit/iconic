@@ -13,6 +13,8 @@ export default class PropertyIconManager extends IconManager {
 	constructor(plugin: IconicPlugin) {
 		super(plugin);
 		this.plugin.registerEvent(this.app.workspace.on('layout-change', () => {
+			if (activeDocument.contains(this.allPropsContainerEl)
+				|| activeDocument.contains(this.filePropsContainerEl)) return;
 			this.app.workspace.iterateAllLeaves(leaf => this.manageLeaf(leaf));
 		}));
 		this.app.workspace.iterateAllLeaves(leaf => this.manageLeaf(leaf));
@@ -69,12 +71,15 @@ export default class PropertyIconManager extends IconManager {
 		this.stopMutationObserver(this.filePropsContainerEl);
 
 		// All Properties pane
+		const propMap = new Map<string, PropertyItem>();
+		for (const prop of props) propMap.set(prop.id, prop);
+
 		const itemEls = this.allPropsContainerEl?.findAll(':scope > .tree-item') ?? [];
 		for (const itemEl of itemEls) {
 			itemEl.addClass('iconic-item');
 
 			const textEl = itemEl.find('.tree-item-self > .tree-item-inner > .tree-item-inner-text');
-			const prop = props.find(prop => prop.id === textEl?.getText());
+			const prop = textEl ? propMap.get(textEl.getText()) : undefined;
 			if (!prop) continue;
 
 			const iconEl = itemEl.find('.tree-item-self > .tree-item-icon');

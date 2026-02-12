@@ -322,9 +322,9 @@ export default class RuleManager {
 			case 'file': {
 				const files = allItems.filter(file => !file.items);
 				// Prune file rulings (remove files that no longer exist)
-				const existingIds = files.map(file => file.id);
+				const existingIds = new Set(files.map(file => file.id));
 				for (const [fileId] of this.fileRulings) {
-					if (!existingIds.contains(fileId)) {
+					if (!existingIds.has(fileId)) {
 						this.fileRulings.delete(fileId);
 						anyRulingsChanged = true;
 					}
@@ -361,9 +361,9 @@ export default class RuleManager {
 			case 'folder': {
 				const folders = allItems.filter(folder => folder.items);
 				// Prune folder rulings (remove folders that no longer exist)
-				const folderIds = folders.map(folder => folder.id);
+				const folderIds = new Set(folders.map(folder => folder.id));
 				for (const [folderId] of this.folderRulings) {
-					if (!folderIds.contains(folderId)) {
+					if (!folderIds.has(folderId)) {
 						this.folderRulings.delete(folderId);
 						anyRulingsChanged = true;
 					}

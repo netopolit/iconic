@@ -60,6 +60,9 @@ export default class TagIconManager extends IconManager {
 	 * Refresh an array of tag icons, including any subitems.
 	 */
 	private refreshChildIcons(tags: TagItem[], itemEls: HTMLElement[]): void {
+		const tagMap = new Map<string, TagItem>();
+		for (const tag of tags) tagMap.set(tag.id, tag);
+
 		for (const itemEl of itemEls) {
 			itemEl.addClass('iconic-item');
 
@@ -67,7 +70,7 @@ export default class TagIconManager extends IconManager {
 			if (!selfEl) continue;
 			const tagId = selfEl.find(':scope > .tree-item-inner > .tree-item-inner-text')?.getText();
 			if (!tagId) continue;
-			const tag = tags.find(tag => tag.id === tagId);
+			const tag = tagMap.get(tagId);
 			if (!tag) continue;
 
 			if (tag.color) tag.iconDefault = 'lucide-tag';

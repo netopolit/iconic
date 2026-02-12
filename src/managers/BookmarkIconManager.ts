@@ -82,10 +82,11 @@ export default class BookmarkIconManager extends IconManager {
 	 * Refresh an array of bookmark icons, including any subitems.
 	 */
 	private refreshChildIcons(bmarks: BookmarkItem[], itemEls: HTMLElement[], unloading?: boolean) {
-		for (const itemEl of itemEls) {
+		for (let i = 0; i < itemEls.length; i++) {
+			const itemEl = itemEls[i];
 			itemEl.addClass('iconic-item');
 
-			const bmark = bmarks[itemEls.indexOf(itemEl)];
+			const bmark = bmarks[i];
 			if (!bmark || bmark.category === 'url') continue;
 
 			// Check for an icon ruling
