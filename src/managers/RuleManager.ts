@@ -32,19 +32,19 @@ export default class RuleManager {
 		this.plugin = plugin;
 
 		// Fix any duplicate rule IDs
-		const fileRuleIds: string[] = [];
-		const folderRuleIds: string[] = [];
+		const fileRuleIds = new Set<string>();
+		const folderRuleIds = new Set<string>();
 		for (const ruleBase of this.plugin.settings.fileRules) {
-			if (!ruleBase.id || fileRuleIds.includes(ruleBase.id)) {
+			if (!ruleBase.id || fileRuleIds.has(ruleBase.id)) {
 				ruleBase.id = this.newRuleId('file');
 			}
-			fileRuleIds.push(ruleBase.id);
+			fileRuleIds.add(ruleBase.id);
 		}
 		for (const ruleBase of this.plugin.settings.folderRules) {
-			if (!ruleBase.id || folderRuleIds.includes(ruleBase.id)) {
+			if (!ruleBase.id || folderRuleIds.has(ruleBase.id)) {
 				ruleBase.id = this.newRuleId('folder');
 			}
-			folderRuleIds.push(ruleBase.id);
+			folderRuleIds.add(ruleBase.id);
 		}
 		this.plugin.saveSettings();
 

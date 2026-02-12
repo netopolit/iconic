@@ -210,7 +210,7 @@ export default class SuggestionDialogIconManager extends IconManager {
 				const iconDefault = value.item.view.getIcon();
 
 				// Distinguish between file tabs and plugin tabs
-				if (!PLUGIN_TAB_TYPES.includes(tabType) && value.file instanceof TFile) {
+				if (!PLUGIN_TAB_TYPES.has(tabType) && value.file instanceof TFile) {
 					const file = this.plugin.getFileItem(value.file.path);
 					const rule = this.plugin.ruleManager.checkRuling('file', file.id) ?? file;
 					if (rule.icon || rule.color) {

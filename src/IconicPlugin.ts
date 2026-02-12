@@ -28,19 +28,21 @@ export type Category = 'app' | 'tab' | 'file' | 'folder' | 'group' | 'search' | 
 export type AppItemId = 'help' | 'settings' | 'pin' | 'sidebarLeft' | 'sidebarRight' | 'minimize' | 'maximize' | 'unmaximize' | 'close';
 
 // Plugin tabs that contain a file, but should still display a tab-specific icon
-export const PLUGIN_TAB_TYPES = [
+export const PLUGIN_TAB_TYPES = new Set([
 	'backlink',
 	'file-properties',
 	'footnotes',
 	'outgoing-link',
 	'outline',
-];
+]);
 
-const SYNCABLE_TYPES = ['image', 'audio', 'video', 'pdf', 'unsupported'];
-const IMAGE_EXTENSIONS = ['bmp', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'avif'];
-const AUDIO_EXTENSIONS = ['mp3', 'wav', 'm4a', '3gp', 'flac', 'ogg', 'oga', 'opus'];
-const VIDEO_EXTENSIONS = ['mp4', 'webm', 'ogv', 'mov', 'mkv'];
-const SYNCABLE_EXTENSIONS = ['md', 'canvas', 'pdf'].concat(IMAGE_EXTENSIONS).concat(AUDIO_EXTENSIONS).concat(VIDEO_EXTENSIONS);
+const SYNCABLE_TYPES = new Set(['image', 'audio', 'video', 'pdf', 'unsupported']);
+const IMAGE_EXTENSIONS = new Set(['bmp', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'avif']);
+const AUDIO_EXTENSIONS = new Set(['mp3', 'wav', 'm4a', '3gp', 'flac', 'ogg', 'oga', 'opus']);
+const VIDEO_EXTENSIONS = new Set(['mp4', 'webm', 'ogv', 'mov', 'mkv']);
+const SYNCABLE_EXTENSIONS = new Set(['md', 'canvas', 'pdf', ...IMAGE_EXTENSIONS, ...AUDIO_EXTENSIONS, ...VIDEO_EXTENSIONS]);
+
+const PATH_REGEX = /^(.*\/)?(.*)$/s;
 
 const HOUR = 1000 * 60 * 60; // 1 hour in millis
 const MINUTE = 1000 * 60; // 1 minute in millis
@@ -213,6 +215,7 @@ export default class IconicPlugin extends Plugin {
 	suggestionDialogIconManager?: SuggestionDialogIconManager;
 	dialogCommands: Command[] = [];
 	private isSaving = false;
+	private readonly splitFilePathCache = new Map<string, { path: string, tree: string, filename: string, basename: string, extension: string, subpath: string }>();
 
 	/**
 	 * @override
@@ -360,6 +363,7 @@ export default class IconicPlugin extends Plugin {
 			this.refreshBody();
 
 			this.registerEvent(this.app.vault.on('create', tAbstractFile => {
+				this.splitFilePathCache.clear();
 				const page = tAbstractFile instanceof TFile ? 'file' : 'folder';
 				// If a created file/folder triggers a new ruling, refresh icons
 				if (this.ruleManager.triggerRulings(page, 'rename', 'move', 'modify')) {
@@ -368,6 +372,7 @@ export default class IconicPlugin extends Plugin {
 			}));
 
 			this.registerEvent(this.app.vault.on('rename', (tAbstractFile, oldPath) => {
+				this.splitFilePathCache.clear();
 				const { path } = tAbstractFile;
 				const fileIcon = this.settings.fileIcons[oldPath];
 				if (fileIcon) {
@@ -395,6 +400,7 @@ export default class IconicPlugin extends Plugin {
 			}));
 
 			this.registerEvent(this.app.vault.on('delete', (tAbstractFile) => {
+				this.splitFilePathCache.clear();
 				const { path } = tAbstractFile;
 				if (this.settings.rememberDeletedItems === false) {
 					delete this.settings.fileIcons[path];
@@ -669,36 +675,36 @@ export default class IconicPlugin extends Plugin {
 	 * Refresh all icon managers, or a specific group of them.
 	 */
 	refreshManagers(...categories: Category[]): void {
-		if (categories.length === 0) {
-			categories = ['app', 'tab', 'file', 'folder', 'tag', 'property', 'ribbon'];
-		}
+		const cats = categories.length === 0
+			? new Set<Category>(['app', 'tab', 'file', 'folder', 'tag', 'property', 'ribbon'])
+			: new Set<Category>(categories);
 		const managers = new Set<IconManager | undefined>();
 
-		if (categories?.includes('app')) {
+		if (cats.has('app')) {
 			managers.add(this.appIconManager);
 		}
-		if (categories?.includes('tab')) {
+		if (cats.has('tab')) {
 			managers.add(this.tabIconManager);
 		}
-		if (categories?.includes('file')) {
+		if (cats.has('file')) {
 			managers.add(this.tabIconManager);
 			managers.add(this.fileIconManager);
 			managers.add(this.bookmarkIconManager);
 			managers.add(this.editorIconManager);
 		}
-		if (categories?.includes('folder')) {
+		if (cats.has('folder')) {
 			managers.add(this.fileIconManager);
 			managers.add(this.bookmarkIconManager);
 		}
-		if (categories?.includes('tag')) {
+		if (cats.has('tag')) {
 			managers.add(this.tagIconManager);
 			managers.add(this.editorIconManager);
 		}
-		if (categories?.includes('property')) {
+		if (cats.has('property')) {
 			managers.add(this.propertyIconManager);
 			managers.add(this.editorIconManager);
 		}
-		if (categories?.includes('ribbon')) {
+		if (cats.has('ribbon')) {
 			managers.add(this.ribbonIconManager);
 		}
 
@@ -821,7 +827,7 @@ export default class IconicPlugin extends Plugin {
 		this.app.workspace.iterateAllLeaves(leaf => {
 			if (tab) return;
 			const tabType = leaf.view.getViewType();
-			if (tabType === tabId || leaf.view.getState().file === tabId && !PLUGIN_TAB_TYPES.includes(tabType)) {
+			if (tabType === tabId || leaf.view.getState().file === tabId && !PLUGIN_TAB_TYPES.has(tabType)) {
 				tab = this.defineTabItem(leaf, unloading);
 			}
 		});
@@ -855,7 +861,7 @@ export default class IconicPlugin extends Plugin {
 		const isStacked = leaf.parent?.isStacked === true;
 		const filePath = leaf.view.getState().file; // Used because view.file is undefined on deferred views
 
-		if (filePath && !PLUGIN_TAB_TYPES.includes(tabType)) {
+		if (filePath && !PLUGIN_TAB_TYPES.has(tabType)) {
 			const fileId = typeof filePath === 'string' ? filePath : '';
 			const fileIcon = this.settings.fileIcons[fileId] ?? {};
 			const isMarkdown = tabType === 'markdown';
@@ -935,9 +941,9 @@ export default class IconicPlugin extends Plugin {
 				iconDefault = 'lucide-layout-dashboard';
 			} else if (extension === 'pdf') {
 				iconDefault = 'lucide-file-text';
-			} else if (IMAGE_EXTENSIONS.includes(extension)) {
+			} else if (IMAGE_EXTENSIONS.has(extension)) {
 				iconDefault = 'lucide-image';
-			} else if (AUDIO_EXTENSIONS.includes(extension)) {
+			} else if (AUDIO_EXTENSIONS.has(extension)) {
 				iconDefault = 'lucide-file-audio';
 			} else {
 				iconDefault = 'lucide-file';
@@ -970,20 +976,26 @@ export default class IconicPlugin extends Plugin {
 		extension: string // Extension only
 		subpath: string   // #Subpath after extension
 	} {
-		const subpathExts = ['md', 'pdf']; // Extensions with linkable subpaths
-		const subpathStart = Math.max(...subpathExts.map(ext => {
-			const index = fileId.lastIndexOf(`.${ext}#`);
-			return index > -1 ? (index + ext.length + 1) : -1;
-		}));
+		const cached = this.splitFilePathCache.get(fileId);
+		if (cached) return cached;
+
+		const mdIndex = fileId.lastIndexOf('.md#');
+		const pdfIndex = fileId.lastIndexOf('.pdf#');
+		const subpathStart = Math.max(
+			mdIndex > -1 ? mdIndex + 3 : -1,
+			pdfIndex > -1 ? pdfIndex + 4 : -1,
+		);
 		const subpath = subpathStart > -1 ? fileId.substring(subpathStart, fileId.length) : '';
 		const path = subpathStart > -1 ? fileId.substring(0, subpathStart) : fileId;
 
-		const [, tree = '', filename] = path.match(/^(.*\/)?(.*)$/s) ?? [];
+		const [, tree = '', filename] = path.match(PATH_REGEX) ?? [];
 		const extensionStart = filename.lastIndexOf('.');
 		const extension = filename.substring(extensionStart > -1 ? extensionStart + 1 : filename.length) || '';
 		const basename = filename.substring(0, extensionStart > -1 ? extensionStart : filename.length) || '';
 
-		return { path, tree, filename, basename, extension, subpath };
+		const result = { path, tree, filename, basename, extension, subpath };
+		this.splitFilePathCache.set(fileId, result);
+		return result;
 	}
 
 	/**
@@ -1034,9 +1046,9 @@ export default class IconicPlugin extends Plugin {
 					if (!unloading) {
 						if (extension === 'pdf') {
 							iconDefault = 'lucide-file-text';
-						} else if (IMAGE_EXTENSIONS.includes(extension)) {
+						} else if (IMAGE_EXTENSIONS.has(extension)) {
 							iconDefault = 'lucide-image';
-						} else if (AUDIO_EXTENSIONS.includes(extension)) {
+						} else if (AUDIO_EXTENSIONS.has(extension)) {
 							iconDefault = 'lucide-file-audio';
 						}
 					}
@@ -1527,11 +1539,13 @@ export default class IconicPlugin extends Plugin {
 
 		// Prune bookmark icons
 		if (bmarkBases.length > 0) {
-			const baseIds = bmarkBases
-				.filter(bmarkBase => bmarkBase.type !== 'file' && bmarkBase.type !== 'folder')
-				.map(bmarkBase => bmarkBase.ctime.toString());
+			const baseIdSet = new Set(
+				bmarkBases
+					.filter(bmarkBase => bmarkBase.type !== 'file' && bmarkBase.type !== 'folder')
+					.map(bmarkBase => bmarkBase.ctime.toString())
+			);
 			for (const savedId in this.settings.bookmarkIcons) {
-				if (!baseIds.includes(savedId)) {
+				if (!baseIdSet.has(savedId)) {
 					delete this.settings.bookmarkIcons[savedId];
 				}
 			}
@@ -1539,9 +1553,9 @@ export default class IconicPlugin extends Plugin {
 
 		// Prune property icons
 		if (propBases.length > 0) {
-			const baseIds = Object.keys(propBases);
+			const baseIdSet = new Set(Object.keys(propBases).map(id => id.toLowerCase()));
 			for (const savedId in this.settings.propertyIcons) {
-				if (!baseIds.some(baseId => baseId.toLowerCase() !== savedId.toLowerCase())) {
+				if (!baseIdSet.has(savedId.toLowerCase())) {
 					delete this.settings.propertyIcons[savedId];
 				}
 			}
@@ -1556,8 +1570,9 @@ export default class IconicPlugin extends Plugin {
 		const appId = this.app.appId;
 		// @ts-expect-error (Private API)
 		const unsyncedFolders: string[] = this.app.internalPlugins?.plugins?.sync?.instance?.ignoreFolders ?? [];
+		const unsyncedTypes = new Set<string>();
 		// @ts-expect-error (Private API)
-		const unsyncedTypes: string[] = SYNCABLE_TYPES.filter(type => !this.app.internalPlugins?.plugins?.sync?.instance?.allowTypes.has(type));
+		for (const type of SYNCABLE_TYPES) if (!this.app.internalPlugins?.plugins?.sync?.instance?.allowTypes.has(type)) unsyncedTypes.add(type);
 
 		for (const [fileId, fileIcon] of Object.entries(this.settings.fileIcons)) {
 			if (!Array.isArray(fileIcon.unsynced)) {
@@ -1566,11 +1581,11 @@ export default class IconicPlugin extends Plugin {
 
 			const { extension } = this.splitFilePath(fileId);
 			const unsynced = unsyncedFolders.some(folder => folder === fileId || fileId.startsWith(folder + '/'))
-				|| unsyncedTypes.includes('unsupported') && !SYNCABLE_EXTENSIONS.includes(extension)
-				|| unsyncedTypes.includes('image') && IMAGE_EXTENSIONS.includes(extension)
-				|| unsyncedTypes.includes('audio') && AUDIO_EXTENSIONS.includes(extension)
-				|| unsyncedTypes.includes('video') && VIDEO_EXTENSIONS.includes(extension)
-				|| unsyncedTypes.includes('pdf') && extension === 'pdf';
+				|| unsyncedTypes.has('unsupported') && !SYNCABLE_EXTENSIONS.has(extension)
+				|| unsyncedTypes.has('image') && IMAGE_EXTENSIONS.has(extension)
+				|| unsyncedTypes.has('audio') && AUDIO_EXTENSIONS.has(extension)
+				|| unsyncedTypes.has('video') && VIDEO_EXTENSIONS.has(extension)
+				|| unsyncedTypes.has('pdf') && extension === 'pdf';
 
 			if (unsynced) {
 				fileIcon.unsynced = fileIcon.unsynced ?? [];

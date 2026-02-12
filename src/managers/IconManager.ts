@@ -85,13 +85,14 @@ export default abstract class IconManager {
 	 * Replaces any listener (of the same element & type) set by this {@link IconManager}.
 	 */
 	protected setEventListener<K extends keyof HTMLElementEventMap>(element: HTMLElement, type: K, listener: (this: HTMLElement, event: HTMLElementEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void {
-		if (!this.eventListeners.has(type)) {
-			this.eventListeners.set(type, new Map());
+		let map = this.eventListeners.get(type);
+		if (!map) {
+			map = new Map();
+			this.eventListeners.set(type, map);
 		}
-		const map = this.eventListeners.get(type)!;
-		if (map.has(element)) {
-			const { listener, options } = map.get(element)!;
-			element.removeEventListener(type, listener, options);
+		const existing = map.get(element);
+		if (existing) {
+			element.removeEventListener(type, existing.listener, existing.options);
 		}
 		this.plugin.registerDomEvent(element, type, listener, options);
 		map.set(element, { listener, options });
