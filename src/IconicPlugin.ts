@@ -236,7 +236,7 @@ export default class IconicPlugin extends Plugin {
 				// Check if this icon belongs to an icon pack
 				for (const [prefix, packName] of packPrefixes) {
 					if (id.startsWith(prefix)) {
-						const iconName = id.substring(prefix.length).replaceAll('-', ' ');
+						const iconName = id.substring(prefix.length).replaceAll('-', ' ').replaceAll('_', ' ');
 						return [id, packName + ': ' + (iconName[0]?.toUpperCase() + iconName.slice(1))];
 					}
 				}

@@ -81,19 +81,13 @@ export default class IconPackManager {
 			// Process and save each SVG
 			const iconNames: string[] = [];
 			const prefix = packMeta.path + '/';
-			const isRemixPack = packMeta.id === 'remix-icons';
-			const isBoxiconsPack = packMeta.id === 'boxicons';
-
 			for (const [filePath, fileData] of Object.entries(files)) {
 				if (!filePath.endsWith('.svg')) continue;
 
-				// For Remix Icons, recurse into subdirectories
-				// For Boxicons, recurse into subdirectories (regular/solid/logos)
 				let matchesPath = false;
-				if (isRemixPack || isBoxiconsPack) {
+				if (packMeta.recursive) {
 					matchesPath = filePath.startsWith(prefix);
 				} else {
-					// Must be directly in the target directory
 					const fileDir = filePath.substring(0, filePath.lastIndexOf('/') + 1);
 					matchesPath = fileDir === prefix;
 				}

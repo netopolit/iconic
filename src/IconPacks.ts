@@ -13,6 +13,7 @@ export interface IconPackMeta {
 	downloadUrl: string;
 	path: string;
 	count: number;
+	recursive?: boolean;
 }
 
 /**
@@ -71,6 +72,7 @@ export const ICON_PACK_REGISTRY: IconPackMeta[] = [
 		downloadUrl: 'https://github.com/Remix-Design/RemixIcon/archive/refs/tags/v4.6.0.zip',
 		path: 'RemixIcon-4.6.0/icons',
 		count: 2800,
+		recursive: true,
 	},
 	{
 		id: 'boxicons',
@@ -80,6 +82,44 @@ export const ICON_PACK_REGISTRY: IconPackMeta[] = [
 		downloadUrl: 'https://github.com/atisawd/boxicons/archive/refs/tags/v2.1.4.zip',
 		path: 'boxicons-2.1.4/svg',
 		count: 1600,
+		recursive: true,
+	},
+	{
+		id: 'tabler-icons-outline',
+		name: 'Tabler Icons Outline',
+		prefix: 'tio-',
+		version: '3.36.1',
+		downloadUrl: 'https://github.com/tabler/tabler-icons/archive/refs/tags/v3.36.1.zip',
+		path: 'tabler-icons-3.36.1/icons/outline',
+		count: 5000,
+	},
+	{
+		id: 'tabler-icons-filled',
+		name: 'Tabler Icons Filled',
+		prefix: 'tif-',
+		version: '3.36.1',
+		downloadUrl: 'https://github.com/tabler/tabler-icons/archive/refs/tags/v3.36.1.zip',
+		path: 'tabler-icons-3.36.1/icons/filled',
+		count: 1000,
+	},
+	{
+		id: 'feather-icons',
+		name: 'Feather Icons',
+		prefix: 'fi-',
+		version: '4.29.2',
+		downloadUrl: 'https://github.com/feathericons/feather/archive/refs/tags/v4.29.2.zip',
+		path: 'feather-4.29.2/icons',
+		count: 287,
+	},
+	{
+		id: 'coolicons',
+		name: 'coolicons',
+		prefix: 'ci-',
+		version: '4.1',
+		downloadUrl: 'https://github.com/krystonschwarze/coolicons/releases/download/v4.1/coolicons.v4.1.zip',
+		path: 'cooliocns SVG',
+		count: 440,
+		recursive: true,
 	},
 ];
 

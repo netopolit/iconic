@@ -115,7 +115,7 @@ export default class IconPackBrowser extends Modal {
 		for (const pack of this.plugin.iconPackManager.getInstalledPacks()) {
 			for (const iconName of pack.iconNames) {
 				const iconId = pack.prefix + iconName;
-				const tidyName = iconName.replaceAll('-', ' ');
+				const tidyName = iconName.replaceAll('-', ' ').replaceAll('_', ' ');
 				const capitalizedName = pack.name + ': ' + (tidyName[0]?.toUpperCase() + tidyName.slice(1));
 				ICONS.set(iconId, capitalizedName);
 			}
