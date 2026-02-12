@@ -316,13 +316,15 @@ export default class EditorIconManager extends IconManager {
 		if (!propListEl) return;
 		const propEls = propListEl.findAll(':scope > .metadata-property');
 
+		// Build Map with lowercase keys for O(1) lookups
+		const propMap = new Map<string, PropertyItem>();
+		for (const prop of props) propMap.set(prop.id.toLowerCase(), prop);
+
 		for (const propEl of propEls) {
 			const domPropId = propEl.dataset.propertyKey; // Lowercase
 			if (!domPropId) continue;
 
-			// Use case-insensitive matching to find the property
-			const prop = props.find(prop => prop.id.toLowerCase() === domPropId.toLowerCase());
-
+			const prop = propMap.get(domPropId.toLowerCase());
 			if (!prop) continue;
 
 			const keyEl = propEl.find(':scope > .metadata-property-key');
@@ -341,11 +343,15 @@ export default class EditorIconManager extends IconManager {
 		const propTagEls = view.contentEl.findAll('.metadata-property[data-property-key="tags"] .multi-select-pill');
 		if (!propTagEls) return;
 
+		// Build Map for O(1) tag lookups
+		const tagMap = new Map<string, TagItem>();
+		for (const tag of tags) tagMap.set(tag.id, tag);
+
 		// Refresh each tag pill
 		for (const propTagEl of propTagEls) {
 			const tagId = propTagEl.find(':scope > .multi-select-pill-content')?.getText();
 			if (!tagId) continue;
-			const tag = tags.find(tag => tag.id === tagId) ?? null;
+			const tag = tagMap.get(tagId) ?? null;
 			this.refreshTag(propTagEl, tag, () => {
 				if (tag) this.onTagContextMenu(tag.id);
 			}, unloading);
@@ -356,10 +362,14 @@ export default class EditorIconManager extends IconManager {
 	 * Refresh all hashtag elements in reading mode.
 	 */
 	private refreshReadingModeHashtags(tags: TagItem[], tagEls: HTMLElement[], unloading?: boolean): void {
+		// Build Map for O(1) tag lookups
+		const tagMap = new Map<string, TagItem>();
+		for (const tag of tags) tagMap.set(tag.id, tag);
+
 		for (const tagEl of tagEls) {
 			const tagId = tagEl.getAttribute('href')?.replace('#', '');
 			if (!tagId) continue;
-			const tag = tags.find(tag => tag.id === tagId) ?? null;
+			const tag = tagMap.get(tagId) ?? null;
 			this.refreshTag(tagEl, tag, event => {
 				if (tag) this.onCreateTagContextMenu(tag.id, event);
 			}, unloading);

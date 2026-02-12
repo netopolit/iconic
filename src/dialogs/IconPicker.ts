@@ -99,6 +99,7 @@ export default class IconPicker extends Modal {
 	private readonly searchResults: [icon: string, iconName: string][] = [];
 	private cachedPackFilter: string | null | undefined;
 	private cachedFilteredIcons: [string, string][] = [];
+	private cachedItemsPerRow: number | null = null;
 
 	private constructor(
 		plugin: IconicPlugin,
@@ -204,14 +205,20 @@ export default class IconPicker extends Modal {
 
 	/**
 	 * Calculate how many items fit in one row of the browse grid.
+	 * Result is cached and invalidated when search results change.
 	 */
 	private getItemsPerRow(): number {
+		if (this.cachedItemsPerRow !== null) return this.cachedItemsPerRow;
 		const children = this.searchResultsSetting.controlEl.children;
 		if (children.length < 2) return 1;
 		const firstTop = (children[0] as HTMLElement).offsetTop;
 		for (let i = 1; i < children.length; i++) {
-			if ((children[i] as HTMLElement).offsetTop !== firstTop) return i;
+			if ((children[i] as HTMLElement).offsetTop !== firstTop) {
+				this.cachedItemsPerRow = i;
+				return i;
+			}
 		}
+		this.cachedItemsPerRow = children.length;
 		return children.length;
 	}
 
@@ -755,6 +762,9 @@ export default class IconPicker extends Modal {
 	 * Update search results based on current query.
 	 */
 	private updateSearchResults(): void {
+		// Invalidate cached items-per-row (layout may change)
+		this.cachedItemsPerRow = null;
+
 		// Cancel any pending chunked render
 		if (this.browseRenderTimer !== null) {
 			cancelAnimationFrame(this.browseRenderTimer);
@@ -773,7 +783,7 @@ export default class IconPicker extends Modal {
 					if (id.startsWith('lucide-')) this.cachedFilteredIcons.push([id, name]);
 				}
 			} else if (packFilter) {
-				const pack = this.plugin.iconPackManager.getInstalledPacks().find(p => p.id === packFilter);
+				const pack = this.plugin.iconPackManager.getInstalledPack(packFilter);
 				if (pack) {
 					for (const [id, name] of ICONS) {
 						if (id.startsWith(pack.prefix)) this.cachedFilteredIcons.push([id, name]);

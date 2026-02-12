@@ -190,6 +190,13 @@ export default class IconPackManager {
 	}
 
 	/**
+	 * Get a single installed pack by ID.
+	 */
+	getInstalledPack(packId: string): InstalledIconPack | undefined {
+		return this.installedPacks.get(packId);
+	}
+
+	/**
 	 * Check if a pack is installed.
 	 */
 	isInstalled(packId: string): boolean {
@@ -210,6 +217,13 @@ export default class IconPackManager {
 		const pack = this.installedPacks.get(packId);
 		if (!pack) return [];
 		return pack.iconNames.map(name => pack.prefix + name);
+	}
+
+	/**
+	 * Get the number of icons in an installed pack without allocating an array.
+	 */
+	getPackIconCount(packId: string): number {
+		return this.installedPacks.get(packId)?.iconNames.length ?? 0;
 	}
 
 	/**

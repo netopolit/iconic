@@ -1138,8 +1138,8 @@ export default class IconicPlugin extends Plugin {
 	getTagItem(tagId: string, unloading?: boolean): TagItem | null {
 		const tagHash = '#' + tagId;
 		// @ts-expect-error (Private API)
-		const tagHashes: string[] = Object.keys(this.app.metadataCache.getTags()) ?? [];
-		return tagHashes.includes(tagHash)
+		const tags = this.app.metadataCache.getTags() ?? {};
+		return tagHash in tags
 			? this.defineTagItem({
 				id: tagId,
 				name: tagHash,
@@ -1177,8 +1177,8 @@ export default class IconicPlugin extends Plugin {
 	 */
 	getPropertyItem(propId: string, unloading?: boolean): PropertyItem {
 		// @ts-expect-error (Private API)
-		const propBases: any[] = Object.values(this.app.metadataTypeManager?.properties) ?? [];
-		const propBase = propBases.find(propBase => propBase.name.toLowerCase() === propId.toLowerCase()) ?? {};
+		const properties = this.app.metadataTypeManager?.properties;
+		const propBase = properties?.[propId.toLowerCase()] ?? {};
 		return this.definePropertyItem(propBase, unloading);
 	}
 

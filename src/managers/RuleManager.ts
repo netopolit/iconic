@@ -144,7 +144,7 @@ export default class RuleManager {
 	 * Generate a 5-character rule ID. 916,132,832 possible values.
 	 */
 	newRuleId(page: Category): string {
-		const ids = this.getRuleBases(page).map(ruleBase => ruleBase.id);
+		const ids = new Set(this.getRuleBases(page).map(ruleBase => ruleBase.id));
 		let id: string;
 		let collisions = 0;
 		do { // Try to generate a unique ID (up to 10 times)
@@ -153,7 +153,7 @@ export default class RuleManager {
 				+ BASE62.charAt(Math.floor(Math.random() * BASE62.length))
 				+ BASE62.charAt(Math.floor(Math.random() * BASE62.length))
 				+ BASE62.charAt(Math.floor(Math.random() * BASE62.length));
-		} while (ids.includes(id) && ++collisions < 10);
+		} while (ids.has(id) && ++collisions < 10);
 		return id;
 	}
 
@@ -216,10 +216,10 @@ export default class RuleManager {
 	 */
 	moveRule(page: Category, rule: RuleItem, toIndex: number): boolean {
 		const ruleBases = this.getRuleBases(page);
-		const ruleBase = ruleBases.find(ruleBase => ruleBase.id === rule.id);
-		if (!ruleBase) return false;
+		const index = ruleBases.findIndex(ruleBase => ruleBase.id === rule.id);
+		if (index === -1) return false;
 
-		const index = ruleBases.indexOf(ruleBase);
+		const ruleBase = ruleBases[index];
 		ruleBases.splice(index, 1);
 		ruleBases.splice(toIndex, 0, ruleBase);
 
@@ -564,6 +564,15 @@ export default class RuleManager {
 			? this.plugin.app.metadataCache.getFileCache(tAbstractFile)
 			: null;
 
+		// Build lowercase frontmatter Map once for O(1) property lookups
+		let fmMap: Map<string, any> | null = null;
+		if (metadata?.frontmatter) {
+			fmMap = new Map();
+			for (const key of Object.keys(metadata.frontmatter)) {
+				fmMap.set(key.toLowerCase(), metadata.frontmatter[key]);
+			}
+		}
+
 		for (const condition of rule.conditions) {
 			let isConditionMatched = false;
 			let source: boolean | number | string | (string | null)[] | null | undefined = undefined;
@@ -574,10 +583,9 @@ export default class RuleManager {
 			// Resolve the source
 			if (condition.source.startsWith('property:')) {
 				const propId = condition.source.replace('property:', '');
-				if (metadata?.frontmatter) {
-					const fmProps = Object.entries(metadata.frontmatter);
-					const fmProp = fmProps.find(([fmPropId]) => fmPropId.toLowerCase() === propId.toLowerCase());
-					if (Array.isArray(fmProp)) source = fmProp[1];
+				if (fmMap) {
+					const fmValue = fmMap.get(propId.toLowerCase());
+					if (fmValue !== undefined) source = fmValue;
 				}
 			} else switch (condition.source) {
 				case 'icon': {
@@ -600,12 +608,12 @@ export default class RuleManager {
 				case 'links': source = metadata?.links?.map(link => link.link) ?? []; break;
 				case 'embeds': source = metadata?.embeds?.map(embed => embed.link) ?? []; break;
 				case 'tags': {
-					source = [];
 					const propTags = metadata?.frontmatter?.tags ?? [];
 					const inlineTags = metadata?.tags?.map(tag => tag.tag.replace('#', '')) ?? [];
-					for (const tag of [...propTags, ...inlineTags]) {
-						if (!source.includes(tag)) source.push(tag);
-					}
+					const tagSet = new Set<string>();
+					for (const tag of propTags) tagSet.add(tag);
+					for (const tag of inlineTags) tagSet.add(tag);
+					source = [...tagSet];
 					break;
 				}
 				case 'created': if (tAbstractFile instanceof TFile) source = tAbstractFile.stat.ctime; break;

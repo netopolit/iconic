@@ -46,7 +46,7 @@ export default class IconPackBrowser extends Modal {
 				.setDesc(
 					isInstalled
 						? STRINGS.iconPacks.installedDesc
-							.replace('{#}', this.plugin.iconPackManager.getPackIcons(pack.id).length.toString())
+							.replace('{#}', this.plugin.iconPackManager.getPackIconCount(pack.id).toString())
 							.replace('{text}', installedVersion ?? pack.version)
 						: STRINGS.iconPacks.availableDesc
 							.replace('{#}', pack.count.toString())
