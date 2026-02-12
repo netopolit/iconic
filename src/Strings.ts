@@ -275,8 +275,26 @@ export default class Strings {
 		rule: 'Rule',
 		rules: 'Rules',
 	};
+	static iconPacks = {
+		browserTitle: 'Icon packs',
+		install: 'Install',
+		update: 'Update',
+		remove: 'Remove',
+		installing: 'Installing {text}...',
+		installed: 'Installed {text} ({#} icons)',
+		removed: 'Removed {text}',
+		installError: 'Failed to install {text}',
+		availableDesc: '~{#} icons \u00b7 v{text}',
+		installedDesc: '{#} icons installed \u00b7 v{text}',
+		settingsHeading: 'Icon packs',
+		settingsDesc: 'Add extra icon packs from popular open-source icon sets.',
+		browse: 'Browse',
+		packFilter: 'All icons',
+		packFilterLucide: 'Lucide',
+	};
 	static commands = {
 		openRulebook: 'Open rulebook',
+		manageIconPacks: 'Manage icon packs',
 		toggleBiggerIcons: 'Toggle bigger icons',
 		toggleClickableIcons: {
 			desktop: 'Toggle clickable icons',
@@ -385,6 +403,12 @@ export default class Strings {
 			name: 'Second color picker',
 			descDesktop: 'Appears when you secondary-click the color bubble.',
 			descMobile: 'Appears when you press & hold the color bubble.',
+		},
+		headingIconPacks: 'Icon packs',
+		iconPacks: {
+			name: 'Icon packs',
+			desc: 'Add extra icon packs from popular open-source icon sets.',
+			browse: 'Browse',
 		},
 		headingAdvanced: 'Advanced',
 		uncolorHover: {

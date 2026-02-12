@@ -672,3 +672,17 @@ body[data-theme="Terminal"] .workspace-leaf-content:is([data-type="file-explorer
 body[data-theme="Ukiyo"] .workspace-leaf > .workspace-leaf-content[data-type="file-explorer"] > .nav-files-container.node-insert-event {
 	padding: var(--size-4-1) var(--size-4-3) var(--size-4-6) var(--size-4-3);
 }
+
+/* Icon pack browser */
+.iconic-pack-browser .setting-item-control {
+	gap: var(--size-4-2);
+}
+.iconic-pack-browser .setting-item-description {
+	color: var(--text-muted);
+}
+
+/* Pack filter dropdown in icon picker */
+.iconic-icon-picker .setting-item-control > select.dropdown {
+	flex-shrink: 0;
+	width: auto;
+}

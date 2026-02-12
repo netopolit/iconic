@@ -15,7 +15,9 @@ import EditorIconManager from 'src/managers/EditorIconManager';
 import RibbonIconManager from 'src/managers/RibbonIconManager';
 import SuggestionIconManager from 'src/managers/SuggestionIconManager';
 import SuggestionDialogIconManager from 'src/managers/SuggestionDialogIconManager';
+import IconPackManager from 'src/managers/IconPackManager';
 import IconPicker from 'src/dialogs/IconPicker';
+import IconPackBrowser from 'src/dialogs/IconPackBrowser';
 import RulePicker from 'src/dialogs/RulePicker';
 
 export const ICONS = new Map<string, string>();
@@ -110,7 +112,9 @@ interface IconicSettings {
 		iconMode: boolean;
 		emojiMode: boolean;
 		rulePage: Category;
+		packFilter: string | null;
 	},
+	installedPacks: Record<string, { version: string, prefix: string, name: string }>,
 	appIcons: Record<string, { icon?: string, color?: string }>;
 	tabIcons: Record<string, { icon?: string, color?: string }>;
 	fileIcons: Record<string, { icon?: string, color?: string, unsynced?: string[] }>;
@@ -174,7 +178,9 @@ const DEFAULT_SETTINGS: IconicSettings = {
 		iconMode: true,
 		emojiMode: false,
 		rulePage: 'file',
+		packFilter: null,
 	},
+	installedPacks: {},
 	appIcons: {},
 	tabIcons: {},
 	fileIcons: {},
@@ -191,6 +197,7 @@ const DEFAULT_SETTINGS: IconicSettings = {
  */
 export default class IconicPlugin extends Plugin {
 	settings: IconicSettings;
+	iconPackManager: IconPackManager;
 	menuManager: MenuManager;
 	ruleManager: RuleManager;
 	appIconManager?: AppIconManager;
@@ -213,9 +220,27 @@ export default class IconicPlugin extends Plugin {
 		await this.loadSettings();
 		this.addSettingTab(new IconicSettingTab(this));
 
+		// Load installed icon packs early so their icons are available
+		this.iconPackManager = new IconPackManager(this);
+		await this.iconPackManager.loadInstalledPacks();
+
 		this.app.workspace.onLayoutReady(() => {
+			// Build a map of pack prefixes for icon name generation
+			const packPrefixes = new Map<string, string>();
+			for (const pack of this.iconPackManager.getInstalledPacks()) {
+				packPrefixes.set(pack.prefix, pack.name);
+			}
+
 			// Generate icon names from available icon IDs
 			getIconIds().map(id => {
+				// Check if this icon belongs to an icon pack
+				for (const [prefix, packName] of packPrefixes) {
+					if (id.startsWith(prefix)) {
+						const iconName = id.substring(prefix.length).replaceAll('-', ' ');
+						return [id, packName + ': ' + (iconName[0]?.toUpperCase() + iconName.slice(1))];
+					}
+				}
+
 				switch (id) {
 					default: {
 						const tidyName = id.replace(/^lucide-/, '').replaceAll('-', ' ');
@@ -588,6 +613,13 @@ export default class IconicPlugin extends Plugin {
 					this.refreshManagers('file');
 				});
 			},
+		});
+
+		// COMMAND: Manage icon packs
+		this.addCommand({
+			id: 'manage-icon-packs',
+			name: STRINGS.commands.manageIconPacks,
+			callback: () => IconPackBrowser.open(this),
 		});
 	}
 
@@ -1558,6 +1590,7 @@ export default class IconicPlugin extends Plugin {
 	 * @override
 	 */
 	onunload(): void {
+		this.iconPackManager.unload();
 		this.menuManager.unload();
 		this.ruleManager.unload();
 		this.appIconManager?.unload();

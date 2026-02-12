@@ -89,6 +89,7 @@ export default class IconPicker extends Modal {
 	private iconModeButton: ExtraButtonComponent;
 	private emojiModeButton: ExtraButtonComponent;
 	private mobileModeButton: ButtonComponent;
+	private packFilterEl: HTMLSelectElement | null = null;
 	private colorPickerEl: HTMLElement;
 
 	// State
@@ -313,6 +314,25 @@ export default class IconPicker extends Modal {
 				this.searchField = searchField;
 			});
 		if (!Platform.isPhone) this.searchSetting.setName(STRINGS.iconPicker.search);
+
+		// Pack filter dropdown (only if icon packs are installed)
+		const installedPacks = this.plugin.iconPackManager.getInstalledPacks();
+		if (installedPacks.length > 0) {
+			this.searchSetting.addDropdown(dropdown => {
+				dropdown
+					.addOption('', STRINGS.iconPacks.packFilter)
+					.addOption('lucide', STRINGS.iconPacks.packFilterLucide);
+				for (const pack of installedPacks) {
+					dropdown.addOption(pack.id, pack.name);
+				}
+				dropdown.setValue(dialogState.packFilter ?? '');
+				dropdown.onChange(value => {
+					dialogState.packFilter = value || null;
+					this.updateSearchResults();
+				});
+				this.packFilterEl = dropdown.selectEl;
+			});
+		}
 
 		// Color picker
 		let openRgbPicker = false;
@@ -637,8 +657,21 @@ export default class IconPicker extends Modal {
 		const query = this.searchField.getValue();
 		const fuzzySearch = prepareFuzzySearch(query);
 		const matches: [score: number, iconEntry: [string, string]][] = [];
+		const packFilter = this.plugin.settings.dialogState.packFilter;
+		let filteredIcons: Iterable<[string, string]> = ICONS;
+
+		// Filter icons by pack
+		if (packFilter === 'lucide') {
+			filteredIcons = [...ICONS].filter(([id]) => id.startsWith('lucide-'));
+		} else if (packFilter) {
+			const pack = this.plugin.iconPackManager.getInstalledPacks().find(p => p.id === packFilter);
+			if (pack) {
+				filteredIcons = [...ICONS].filter(([id]) => id.startsWith(pack.prefix));
+			}
+		}
+
 		const iconEntries = [
-			...(this.plugin.settings.dialogState.iconMode ? ICONS : []),
+			...(this.plugin.settings.dialogState.iconMode ? filteredIcons : []),
 			...(this.plugin.settings.dialogState.emojiMode ? EMOJIS : []),
 		];
 

@@ -1,5 +1,6 @@
 import { ExtraButtonComponent, normalizePath, Platform, PluginSettingTab, SettingGroup } from 'obsidian';
 import IconicPlugin, { STRINGS } from 'src/IconicPlugin';
+import IconPackBrowser from 'src/dialogs/IconPackBrowser';
 import RulePicker from 'src/dialogs/RulePicker';
 
 /**
@@ -364,6 +365,44 @@ export default class IconicSettingTab extends PluginSettingTab {
 				this.refreshIndicator(this.indicators.colorPicker2, dropdown.getValue());
 			})
 		);
+
+		// GROUP: Icon packs
+		const groupIconPacks = new SettingGroup(this.containerEl)
+			.setHeading(STRINGS.settings.headingIconPacks);
+
+		// SETTING: Icon packs
+		groupIconPacks.addSetting(setting => setting
+			.setName(STRINGS.settings.iconPacks.name)
+			.setDesc(STRINGS.settings.iconPacks.desc)
+			.addButton(button => { button
+				.setButtonText(STRINGS.settings.iconPacks.browse)
+				.onClick(() => {
+					// @ts-expect-error (Private API)
+					this.app.setting.close();
+					IconPackBrowser.open(this.plugin);
+				});
+			})
+		);
+
+		// Show installed packs
+		const installedPacks = this.plugin.iconPackManager.getInstalledPacks();
+		for (const pack of installedPacks) {
+			groupIconPacks.addSetting(setting => setting
+				.setName(pack.name)
+				.setDesc(STRINGS.iconPacks.installedDesc
+					.replace('{#}', pack.iconNames.length.toString())
+					.replace('{text}', pack.version)
+				)
+				.addExtraButton(button => button
+					.setIcon('lucide-trash-2')
+					.setTooltip(STRINGS.iconPacks.remove)
+					.onClick(async () => {
+						await this.plugin.iconPackManager.uninstallPack(pack.id);
+						this.display();
+					})
+				)
+			);
+		}
 
 		// GROUP: Advanced
 		const groupAdvanced = new SettingGroup(this.containerEl)
