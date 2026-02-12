@@ -192,6 +192,16 @@ export default class ColorUtils {
 	}
 
 	/**
+	 * Eagerly convert all 9 named Obsidian colors into the RGB cache.
+	 * Call once on layout ready and after theme changes.
+	 */
+	static precompute(): void {
+		for (const color of COLORS.keys()) {
+			this.toRgb(color);
+		}
+	}
+
+	/**
 	 * Convert color into rgb/rgba() string.
 	 * @param color a color name, or a specific CSS color
 	 */

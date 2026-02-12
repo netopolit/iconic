@@ -13,6 +13,7 @@ export default class FileIconManager extends IconManager {
 	 * Tracks pending refresh operations to prevent multiple rapid refreshes when expanding folders.
 	 */
 	private refreshTimerId: number;
+	private containerRefreshTimerId: number;
 
 	constructor(plugin: IconicPlugin) {
 		super(plugin);
@@ -48,11 +49,11 @@ export default class FileIconManager extends IconManager {
 		}, mutations => {
 			for (const mutation of mutations) {
 				if (mutation.attributeName === 'data-path') {
-					this.refreshIcons();
+					this.debouncedContainerRefresh();
 					return;
 				} else for (const addedNode of mutation.addedNodes) {
 					if (addedNode instanceof HTMLElement && addedNode.hasClass('tree-item')) {
-						this.refreshIcons();
+						this.debouncedContainerRefresh();
 						return;
 					}
 				}
@@ -75,11 +76,14 @@ export default class FileIconManager extends IconManager {
 	 * Refresh an array of file icons, including any subitems.
 	 */
 	private refreshChildIcons(files: FileItem[], itemEls: HTMLElement[], unloading?: boolean): void {
+		const fileMap = new Map<string, FileItem>();
+		for (const file of files) fileMap.set(file.id, file);
+
 		for (const itemEl of itemEls) {
 			itemEl.addClass('iconic-item');
 
 			const selfEl = itemEl.find(':scope > .tree-item-self');
-			const file = files.find(file => file.id === selfEl?.dataset.path);
+			const file = fileMap.get(selfEl?.dataset.path ?? '');
 			if (!file) continue;
 
 			// Check for an icon ruling
@@ -207,6 +211,14 @@ export default class FileIconManager extends IconManager {
 	}
 
 	/**
+	 * Debounced version of refreshIcons for container-level mutations (data-path changes, new tree items).
+	 */
+	private debouncedContainerRefresh(): void {
+		window.clearTimeout(this.containerRefreshTimerId);
+		this.containerRefreshTimerId = window.setTimeout(() => this.refreshIcons(), 100);
+	}
+
+	/**
 	 * When user context-clicks a file, or opens a file pane menu, add custom items to the menu.
 	 */
 	private onContextMenu(...fileIds: string[]): void {
@@ -295,6 +307,7 @@ export default class FileIconManager extends IconManager {
 	 */
 	unload(): void {
 		window.clearTimeout(this.refreshTimerId);
+		window.clearTimeout(this.containerRefreshTimerId);
 		this.refreshIcons(true);
 		super.unload();
 	}

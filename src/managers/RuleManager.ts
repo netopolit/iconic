@@ -316,9 +316,11 @@ export default class RuleManager {
 		let matchedRule: RuleItem | undefined;
 		let anyRulingsChanged = false;
 
+		const allItems = this.plugin.getFileItems();
+
 		switch (page) {
 			case 'file': {
-				const files = this.plugin.getFileItems().filter(file => !file.items);
+				const files = allItems.filter(file => !file.items);
 				// Prune file rulings (remove files that no longer exist)
 				const existingIds = files.map(file => file.id);
 				for (const [fileId] of this.fileRulings) {
@@ -357,7 +359,7 @@ export default class RuleManager {
 				break;
 			}
 			case 'folder': {
-				const folders = this.plugin.getFileItems().filter(folder => folder.items);
+				const folders = allItems.filter(folder => folder.items);
 				// Prune folder rulings (remove folders that no longer exist)
 				const folderIds = folders.map(folder => folder.id);
 				for (const [folderId] of this.folderRulings) {
@@ -753,13 +755,20 @@ export default class RuleManager {
 		return rule.match !== 'any';
 	}
 
+	private static readonly regexCache = new Map<string, RegExp>();
+
 	/**
 	 * Remove forwardslash delimiters from regex if present.
 	 */
 	private static unwrapRegex(value: string): RegExp {
-		return value.startsWith('/') && value.endsWith('/')
-			? new RegExp(value.slice(1, -1))
-			: new RegExp(value);
+		let regex = this.regexCache.get(value);
+		if (!regex) {
+			regex = value.startsWith('/') && value.endsWith('/')
+				? new RegExp(value.slice(1, -1))
+				: new RegExp(value);
+			this.regexCache.set(value, regex);
+		}
+		return regex;
 	}
 
 	/**

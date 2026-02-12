@@ -8,10 +8,12 @@ import IconPicker from 'src/dialogs/IconPicker';
  * Handles icons in workspace tab headers.
  */
 export default class TabIconManager extends IconManager {
+	private refreshTimerId: number;
+
 	constructor(plugin: IconicPlugin) {
 		super(plugin);
-		this.plugin.registerEvent(this.app.workspace.on('layout-change', () => this.refreshIcons()));
-		this.plugin.registerEvent(this.app.workspace.on('active-leaf-change', () => this.refreshIcons()));
+		this.plugin.registerEvent(this.app.workspace.on('layout-change', () => this.debouncedRefresh()));
+		this.plugin.registerEvent(this.app.workspace.on('active-leaf-change', () => this.debouncedRefresh()));
 
 		// Refresh icons in tab selector dropdown ▼
 		const tabListEl = activeDocument.body.find('.mod-root .workspace-tab-header-tab-list > .clickable-icon');
@@ -145,6 +147,14 @@ export default class TabIconManager extends IconManager {
 	}
 
 	/**
+	 * Debounced version of refreshIcons to coalesce rapid layout/leaf-change events.
+	 */
+	private debouncedRefresh(): void {
+		window.clearTimeout(this.refreshTimerId);
+		this.refreshTimerId = window.setTimeout(() => this.refreshIcons(), 50);
+	}
+
+	/**
 	 * When user context-clicks a tab, add custom items to the menu.
 	 */
 	private onContextMenu(tabId: string, tabCategory: Category) {
@@ -242,6 +252,7 @@ export default class TabIconManager extends IconManager {
 	 * @override
 	 */
 	unload(): void {
+		window.clearTimeout(this.refreshTimerId);
 		this.refreshIcons(true);
 		super.unload();
 	}

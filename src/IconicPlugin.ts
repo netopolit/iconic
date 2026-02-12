@@ -355,6 +355,7 @@ export default class IconicPlugin extends Plugin {
 			// Populate ICONS map
 			.forEach(([id, name]) => ICONS.set(id, name));
 
+			ColorUtils.precompute();
 			this.startManagers();
 			this.refreshBody();
 
@@ -409,6 +410,7 @@ export default class IconicPlugin extends Plugin {
 
 		this.registerEvent(this.app.workspace.on('css-change', () => {
 			ColorUtils.clearCache();
+			ColorUtils.precompute();
 			this.refreshManagers();
 			this.refreshBody();
 		}));
