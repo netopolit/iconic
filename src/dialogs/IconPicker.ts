@@ -794,6 +794,7 @@ export default class IconPicker extends Modal {
 					this.cachedFilteredIcons.push(entry);
 				}
 			}
+			this.cachedFilteredIcons.sort(([, a], [, b]) => a.localeCompare(b));
 		}
 
 		// Browse mode: show all pack icons when a specific pack is selected

@@ -29,6 +29,34 @@ export default abstract class IconManager {
 	 * Refresh icon inside a given element.
 	 */
 	protected refreshIcon(item: Item | Icon, iconEl: HTMLElement, onClick?: (event: MouseEvent) => void): void {
+		// Determine the effective icon ID to render
+		let effectiveIcon: string | null = null;
+		if (item.icon) {
+			effectiveIcon = item.icon;
+		} else if (iconEl.hasClass('collapse-icon')) {
+			if (this.plugin.settings.showAllFolderIcons && 'iconDefault' in item && item.iconDefault) {
+				effectiveIcon = item.iconDefault;
+			} else {
+				effectiveIcon = 'right-triangle';
+			}
+		} else if ('iconDefault' in item && item.iconDefault) {
+			effectiveIcon = item.iconDefault;
+		}
+
+		const effectiveColor = item.color ?? '';
+		const prevIcon = iconEl.dataset.iconicId ?? '';
+		const prevColor = iconEl.dataset.iconicColor ?? '';
+
+		// Skip DOM work when nothing changed
+		if (effectiveIcon === prevIcon && effectiveColor === prevColor) {
+			if (onClick) {
+				this.setEventListener(iconEl, 'click', onClick, { capture: true });
+			} else {
+				this.stopEventListener(iconEl, 'click');
+			}
+			return;
+		}
+
 		iconEl.addClass('iconic-icon');
 
 		if (item.icon) {
@@ -65,6 +93,18 @@ export default abstract class IconManager {
 			}
 		}
 
+		// Track rendered state for future early-exit
+		if (effectiveIcon) {
+			iconEl.dataset.iconicId = effectiveIcon;
+		} else {
+			delete iconEl.dataset.iconicId;
+		}
+		if (effectiveColor) {
+			iconEl.dataset.iconicColor = effectiveColor;
+		} else {
+			delete iconEl.dataset.iconicColor;
+		}
+
 		if (onClick) {
 			this.setEventListener(iconEl, 'click', onClick, { capture: true });
 		} else {
@@ -84,7 +124,7 @@ export default abstract class IconManager {
 	 * Set an event listener which will be removed when plugin unloads.
 	 * Replaces any listener (of the same element & type) set by this {@link IconManager}.
 	 */
-	protected setEventListener<K extends keyof HTMLElementEventMap>(element: HTMLElement, type: K, listener: (this: HTMLElement, event: HTMLElementEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void {
+	protected setEventListener<K extends keyof HTMLElementEventMap>(element: HTMLElement, type: K, listener: (this: HTMLElement, event: HTMLElementEventMap[K]) => void, options?: boolean | AddEventListenerOptions): void {
 		let map = this.eventListeners.get(type);
 		if (!map) {
 			map = new Map();

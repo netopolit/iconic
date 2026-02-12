@@ -11,6 +11,8 @@ import IconPicker from 'src/dialogs/IconPicker';
  * Handles icons in the editor window of Markdown tabs.
  */
 export default class EditorIconManager extends IconManager {
+	private modifyTimerId = 0;
+
 	constructor(plugin: IconicPlugin) {
 		super(plugin);
 
@@ -21,6 +23,7 @@ export default class EditorIconManager extends IconManager {
 			this.refreshReadingModeHashtags(tags, tagEls);
 		});
 
+		// eslint-disable-next-line @typescript-eslint/no-this-alias
 		const manager = this;
 		plugin.registerEditorExtension(ViewPlugin.fromClass(class {
 			update(update: ViewUpdate): void {
@@ -68,8 +71,15 @@ export default class EditorIconManager extends IconManager {
 		}
 
 		// If we add a new property to a file, refresh property icons
-		this.plugin.registerEvent(this.app.vault.on('modify', () => {
-			this.refreshIcons();
+		this.plugin.registerEvent(this.app.vault.on('modify', file => {
+			window.clearTimeout(this.modifyTimerId);
+			this.modifyTimerId = window.setTimeout(() => {
+				for (const leaf of this.app.workspace.getLeavesOfType('markdown')) {
+					if (leaf.view instanceof MarkdownView && leaf.view.file === file) {
+						this.refreshViewIcons(leaf.view);
+					}
+				}
+			}, 200);
 		}));
 	}
 
@@ -438,16 +448,16 @@ export default class EditorIconManager extends IconManager {
 			tagEl.style.setProperty('--tag-color-remove-hover', cssRgb);
 			tagEl.style.setProperty('--tag-background', cssRgba + ', 0.1)');
 			tagEl.style.setProperty('--tag-background-hover', cssRgba + ', 0.1)');
-			tagEl.style.setProperty(`--tag-border-color`, cssRgba + ', 0.25)');
-			tagEl.style.setProperty(`--tag-border-color-hover`, cssRgba + ', 0.5)');
+			tagEl.style.setProperty('--tag-border-color', cssRgba + ', 0.25)');
+			tagEl.style.setProperty('--tag-border-color-hover', cssRgba + ', 0.5)');
 		} else {
 			tagEl.style.removeProperty('--tag-color');
 			tagEl.style.removeProperty('--tag-color-hover');
 			tagEl.style.removeProperty('--tag-color-remove-hover');
 			tagEl.style.removeProperty('--tag-background');
 			tagEl.style.removeProperty('--tag-background-hover');
-			tagEl.style.removeProperty(`--tag-border-color`);
-			tagEl.style.removeProperty(`--tag-border-color-hover`);
+			tagEl.style.removeProperty('--tag-border-color');
+			tagEl.style.removeProperty('--tag-border-color-hover');
 		}
 	}
 
@@ -529,6 +539,7 @@ export default class EditorIconManager extends IconManager {
 	 * @override
 	 */
 	unload(): void {
+		window.clearTimeout(this.modifyTimerId);
 		this.refreshIcons(true);
 		this.stopMutationObservers();
 		super.unload();

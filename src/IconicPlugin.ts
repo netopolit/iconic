@@ -215,6 +215,7 @@ export default class IconicPlugin extends Plugin {
 	suggestionDialogIconManager?: SuggestionDialogIconManager;
 	dialogCommands: Command[] = [];
 	private isSaving = false;
+	private saveTimerId = 0;
 	private readonly splitFilePathCache = new Map<string, { path: string, tree: string, filename: string, basename: string, extension: string, subpath: string }>();
 
 	/**
@@ -354,9 +355,7 @@ export default class IconicPlugin extends Plugin {
 					case 'uppercase-lowercase-a': return [id, 'Uppercase lowercase A'];
 				}
 			})
-			// Sort icon names alphabetically
-			.sort(([, aName], [, bName]) => aName.localeCompare(bName))
-			// Populate ICONS map
+			// Populate ICONS map (sorting deferred to IconPicker)
 			.forEach(([id, name]) => ICONS.set(id, name));
 
 			ColorUtils.precompute();
@@ -364,7 +363,6 @@ export default class IconicPlugin extends Plugin {
 			this.refreshBody();
 
 			this.registerEvent(this.app.vault.on('create', tAbstractFile => {
-				this.splitFilePathCache.clear();
 				const page = tAbstractFile instanceof TFile ? 'file' : 'folder';
 				// If a created file/folder triggers a new ruling, refresh icons
 				if (this.ruleManager.triggerRulings(page, 'rename', 'move', 'modify')) {
@@ -373,7 +371,8 @@ export default class IconicPlugin extends Plugin {
 			}));
 
 			this.registerEvent(this.app.vault.on('rename', (tAbstractFile, oldPath) => {
-				this.splitFilePathCache.clear();
+				this.splitFilePathCache.delete(oldPath);
+				this.splitFilePathCache.delete(tAbstractFile.path);
 				const { path } = tAbstractFile;
 				const fileIcon = this.settings.fileIcons[oldPath];
 				if (fileIcon) {
@@ -401,11 +400,11 @@ export default class IconicPlugin extends Plugin {
 			}));
 
 			this.registerEvent(this.app.vault.on('delete', (tAbstractFile) => {
-				this.splitFilePathCache.clear();
+				this.splitFilePathCache.delete(tAbstractFile.path);
 				const { path } = tAbstractFile;
 				if (this.settings.rememberDeletedItems === false) {
 					delete this.settings.fileIcons[path];
-					this.saveSettings();
+					this.saveSettingsAndPrune();
 				}
 				// If a deleted file/folder was associated with a ruling, update rulings
 				const page = tAbstractFile instanceof TFile ? 'file' : 'folder';
@@ -637,7 +636,7 @@ export default class IconicPlugin extends Plugin {
 	/**
 	 * @override
 	 */
-	async onExternalSettingsChange(): Promise<any> {
+	async onExternalSettingsChange(): Promise<void> {
 		await this.loadSettings();
 		this.refreshManagers();
 		this.refreshBody();
@@ -1004,6 +1003,7 @@ export default class IconicPlugin extends Plugin {
 	 */
 	getBookmarkItems(unloading?: boolean): BookmarkItem[] {
 		// @ts-expect-error (Private API)
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const bmarkBases: any[] = this.app.internalPlugins?.plugins?.bookmarks?.instance?.items ?? [];
 		return bmarkBases.map(bmarkBase => this.defineBookmarkItem(bmarkBase, unloading));
 	}
@@ -1027,6 +1027,7 @@ export default class IconicPlugin extends Plugin {
 	/**
 	 * Create bookmark definition.
 	 */
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	private defineBookmarkItem(bmarkBase: any, unloading?: boolean): BookmarkItem {
 		const { path, filename, basename, extension } = this.splitFilePath(bmarkBase.path);
 		const subpath = bmarkBase.subpath ?? '';
@@ -1102,6 +1103,7 @@ export default class IconicPlugin extends Plugin {
 			iconDefault: iconDefault,
 			icon: unloading ? null : bmarkIcon?.icon ?? null,
 			color: unloading ? null : bmarkIcon?.color ?? null,
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			items: bmarkBase.items?.map((bmark: any) => this.defineBookmarkItem(bmark, unloading)) ?? null,
 		}
 	}
@@ -1109,6 +1111,7 @@ export default class IconicPlugin extends Plugin {
 	/**
 	 * Flatten an array of bookmark bases to include all children.
 	 */
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	private flattenBookmarks(bmarkBases: any[]): any[] {
 		const flatArray = [];
 		for (const bmarkBase of bmarkBases) {
@@ -1150,6 +1153,7 @@ export default class IconicPlugin extends Plugin {
 	/**
 	 * Create tag definition.
 	 */
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	private defineTagItem(tagBase: any, unloading?: boolean): TagItem {
 		const tagIcon = this.settings.tagIcons[tagBase.id] ?? {};
 
@@ -1168,6 +1172,7 @@ export default class IconicPlugin extends Plugin {
 	 */
 	getPropertyItems(unloading?: boolean): PropertyItem[] {
 		// @ts-expect-error (Private API)
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const propBases: any[] = Object.values(this.app.metadataTypeManager?.properties) ?? [];
 		return propBases.map(propBase => this.definePropertyItem(propBase, unloading));
 	}
@@ -1186,6 +1191,7 @@ export default class IconicPlugin extends Plugin {
 	/**
 	 * Create property definition.
 	 */
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	private definePropertyItem(propBase: any, unloading?: boolean): PropertyItem {
 		const propIcon = this.settings.propertyIcons[propBase.name] ?? {};
 		// @ts-expect-error (Private API)
@@ -1208,6 +1214,7 @@ export default class IconicPlugin extends Plugin {
 	 */
 	getRibbonItems(unloading?: boolean): RibbonItem[] {
 		// @ts-expect-error (Private API)
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const itemBases: any[] = this.app.workspace.leftRibbon.items ?? [];
 		return itemBases.map(item => this.defineRibbonItem(item, unloading));
 	}
@@ -1217,7 +1224,9 @@ export default class IconicPlugin extends Plugin {
 	 */
 	getRibbonItem(itemId: string, unloading?: boolean): RibbonItem {
 		// @ts-expect-error (Private API)
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const itemBase: any = this.app.workspace.leftRibbon.items
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			?.find((itemBase: any) => itemBase?.id === itemId) ?? {};
 		return this.defineRibbonItem(itemBase, unloading);
 	}
@@ -1225,6 +1234,7 @@ export default class IconicPlugin extends Plugin {
 	/**
 	 * Create ribbon command definition.
 	 */
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	private defineRibbonItem(itemBase: any, unloading?: boolean): RibbonItem {
 		const itemIcon = this.settings.ribbonIcons[itemBase.id] ?? {};
 		return {
@@ -1300,6 +1310,7 @@ export default class IconicPlugin extends Plugin {
 				if (color !== bmarkBase?.color) triggers.add('color');
 				this.updateIconSetting(this.settings.fileIcons, bmark.id, icon, color);
 			}
+			// falls through
 			default: {
 				this.updateIconSetting(this.settings.bookmarkIcons, bmark.id, icon, color);
 			}
@@ -1326,6 +1337,7 @@ export default class IconicPlugin extends Plugin {
 					if (color !== bmarkBase?.color) triggers.add('color');
 					this.updateIconSetting(this.settings.fileIcons, bmark.id, bmark.icon, bmark.color);
 				}
+				// falls through
 				default: {
 					this.updateIconSetting(this.settings.bookmarkIcons, bmark.id, bmark.icon, bmark.color);
 				}
@@ -1376,7 +1388,7 @@ export default class IconicPlugin extends Plugin {
 	/**
 	 * Update icon in a given settings object.
 	 */
-	private updateIconSetting(settings: any, itemId: string, icon: string | null, color: string | null): void {
+	private updateIconSetting(settings: Record<string, { icon?: string; color?: string }>, itemId: string, icon: string | null, color: string | null): void {
 		if (icon || color) {
 			if (!settings[itemId]) settings[itemId] = {};
 
@@ -1455,14 +1467,27 @@ export default class IconicPlugin extends Plugin {
 	}
 
 	/**
-	 * Save settings to storage.
+	 * Save settings to storage (debounced).
 	 */
-	async saveSettings(): Promise<void> {
+	saveSettings(): void {
+		window.clearTimeout(this.saveTimerId);
+		this.saveTimerId = window.setTimeout(() => this.flushSave(), 500);
+	}
+
+	/**
+	 * Save settings to storage after pruning deleted items.
+	 */
+	saveSettingsAndPrune(): void {
+		this.pruneSettings();
+		this.saveSettings();
+	}
+
+	/**
+	 * Immediately write settings to disk.
+	 */
+	private async flushSave(): Promise<void> {
 		if (this.isSaving) return;
 		this.isSaving = true;
-		this.pruneSettings();
-
-		// Save and backup settings
 		await this.saveData(this.settings);
 		this.saveBackup();
 		this.isSaving = false;
@@ -1602,6 +1627,7 @@ export default class IconicPlugin extends Plugin {
 	 * @override
 	 */
 	onunload(): void {
+		window.clearTimeout(this.saveTimerId);
 		this.iconPackManager.unload();
 		this.menuManager.unload();
 		this.ruleManager.unload();
