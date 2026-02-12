@@ -1,5 +1,3 @@
-import { getLanguage } from 'obsidian';
-
 export default class Strings {
 	static appItems = {
 		help: 'Open help',
@@ -442,46 +440,5 @@ export default class Strings {
 		backupMinutesAgo: 'Your icons have been restored from a backup saved {#} minutes ago.',
 		backupHoursAgo: 'Your icons have been restored from a backup saved {#} hours ago.',
 		backupDate: 'Your icons have been restored from a backup saved on {#}.',
-	}
-
-	static {
-		Strings.localize();
-	}
-
-	/**
-	 * Dynamically import strings for the current language.
-	 */
-	private static async localize(): Promise<void> {
-		let localizedStrings: any;
-		switch (getLanguage()) {
-			case 'ar': localizedStrings = await import('i18n/ar.json'); break;
-			case 'de': localizedStrings = await import('i18n/de.json'); break;
-			case 'en-GB': localizedStrings = await import('i18n/en-GB.json'); break;
-			case 'es': localizedStrings = await import('i18n/es.json'); break;
-			case 'fr': localizedStrings = await import('i18n/fr.json'); break;
-			case 'id': localizedStrings = await import('i18n/id.json'); break;
-			case 'ja': localizedStrings = await import('i18n/ja.json'); break;
-			case 'ru': localizedStrings = await import('i18n/ru.json'); break;
-			case 'uk': localizedStrings = await import('i18n/uk.json'); break;
-			case 'zh': localizedStrings = await import('i18n/zh.json'); break;
-			default: return;
-		}
-		this.localizeDefaultStrings(this, localizedStrings);
-	}
-
-	/**
-	 * Replace default strings with localized strings.
-	 * Strings and their keys are always type-safe, even if the localized JSON is incomplete or broken.
-	 */
-	private static localizeDefaultStrings(defaultStrings: any, localizedStrings: any): void {
-		for (const [key, value] of Object.entries(localizedStrings)) {
-			if (typeof defaultStrings[key] === 'object') {
-				if (typeof value === 'object') {
-					this.localizeDefaultStrings(defaultStrings[key], value);
-				}
-			} else if (typeof value === 'string') {
-				defaultStrings[key] = value;
-			}
-		}
 	}
 }
