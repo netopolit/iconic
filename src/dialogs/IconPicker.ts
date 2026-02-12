@@ -95,6 +95,7 @@ export default class IconPicker extends Modal {
 	// State
 	private colorPickerPaused = false;
 	private colorPickerHovered = false;
+	private browseRenderTimer: number | null = null;
 	private readonly searchResults: [icon: string, iconName: string][] = [];
 
 	private constructor(
@@ -696,9 +697,13 @@ export default class IconPicker extends Modal {
 	 * Update search results based on current query.
 	 */
 	private updateSearchResults(): void {
+		// Cancel any pending chunked render
+		if (this.browseRenderTimer !== null) {
+			cancelAnimationFrame(this.browseRenderTimer);
+			this.browseRenderTimer = null;
+		}
+
 		const query = this.searchField.getValue();
-		const fuzzySearch = prepareFuzzySearch(query);
-		const matches: [score: number, iconEntry: [string, string]][] = [];
 		const packFilter = this.plugin.settings.dialogState.packFilter;
 		let filteredIcons: Iterable<[string, string]> = ICONS;
 
@@ -721,13 +726,17 @@ export default class IconPicker extends Modal {
 			...(!isBrowseMode && this.plugin.settings.dialogState.emojiMode ? EMOJIS : []),
 		];
 
+		this.searchResults.length = 0;
+
 		if (isBrowseMode && !query) {
-			// Show all pack icons without fuzzy search
+			// Show all pack icons — no fuzzy search or sorting needed
 			for (const iconEntry of iconEntries) {
-				matches.push([0, iconEntry]);
+				this.searchResults.push(iconEntry);
 			}
 		} else if (query) {
 			// Search all icon names
+			const fuzzySearch = prepareFuzzySearch(query);
+			const matches: [score: number, iconEntry: [string, string]][] = [];
 			for (const [icon, iconName] of iconEntries) {
 				if (query === icon) { // Recognize emoji input
 					matches.push([0, [icon, iconName]]);
@@ -736,17 +745,12 @@ export default class IconPicker extends Modal {
 					if (fuzzyMatch) matches.push([fuzzyMatch.score, [icon, iconName]]);
 				}
 			}
-		}
-
-		// Sort matches by score
-		matches.sort(([scoreA,], [scoreB,]) => scoreA > scoreB ? -1 : +1);
-
-		// Copy into an unscored array
-		this.searchResults.length = 0;
-		const maxResults = isBrowseMode && !query ? Infinity : this.plugin.settings.maxSearchResults;
-		for (const [, iconEntry] of matches) {
-			this.searchResults.push(iconEntry);
-			if (this.searchResults.length === maxResults) break;
+			matches.sort(([scoreA,], [scoreB,]) => scoreA > scoreB ? -1 : +1);
+			const maxResults = isBrowseMode ? Infinity : this.plugin.settings.maxSearchResults;
+			for (const [, iconEntry] of matches) {
+				this.searchResults.push(iconEntry);
+				if (this.searchResults.length === maxResults) break;
+			}
 		}
 
 		// Preserve UI state
@@ -756,28 +760,14 @@ export default class IconPicker extends Modal {
 		const scrollLeft = settingEl.scrollLeft;
 		const scrollTop = settingEl.scrollTop;
 
-		// Populate icon buttons
+		// Populate icon buttons (chunked in browse mode for large packs)
 		this.searchResultsSetting.clear();
-		for (const iconEntry of this.searchResults) {
-			const [icon, iconName] = iconEntry;
-			this.searchResultsSetting.addExtraButton(iconButton => {
-				iconButton.setTooltip(iconName, {
-					delay: 300,
-					placement: Platform.isPhone ? 'top' : 'bottom',
-				});
-				const iconEl = iconButton.extraSettingsEl;
-				iconEl.addClass('iconic-search-result');
-				iconEl.tabIndex = -1;
-
-				this.iconManager.refreshIcon({ icon: icon, color: this.color ?? null }, iconEl, () => {
-					this.closeAndSave(icon, this.color);
-				});
-
-				if (Platform.isPhone) this.iconManager.setEventListener(iconEl, 'contextmenu', () => {
-					navigator.vibrate?.(100); // Not supported on iOS
-					displayTooltip(iconEl, iconName, { placement: 'top' });
-				});
-			});
+		const BROWSE_BATCH_SIZE = 200;
+		const initialCount = isBrowseMode
+			? Math.min(BROWSE_BATCH_SIZE, this.searchResults.length)
+			: this.searchResults.length;
+		for (let i = 0; i < initialCount; i++) {
+			this.renderSearchResult(this.searchResults[i]);
 		}
 
 		// Restore UI state
@@ -794,6 +784,51 @@ export default class IconPicker extends Modal {
 				button.extraSettingsEl.addClasses(['iconic-invisible', 'iconic-search-result']);
 			});
 		}
+
+		// Schedule remaining browse icons in chunks
+		if (this.searchResults.length > initialCount) {
+			this.scheduleBrowseRender(initialCount, BROWSE_BATCH_SIZE);
+		}
+	}
+
+	/**
+	 * Render a single icon button into the search results.
+	 */
+	private renderSearchResult([icon, iconName]: [string, string]): void {
+		this.searchResultsSetting.addExtraButton(iconButton => {
+			iconButton.setTooltip(iconName, {
+				delay: 300,
+				placement: Platform.isPhone ? 'top' : 'bottom',
+			});
+			const iconEl = iconButton.extraSettingsEl;
+			iconEl.addClass('iconic-search-result');
+			iconEl.tabIndex = -1;
+
+			this.iconManager.refreshIcon({ icon: icon, color: this.color ?? null }, iconEl, () => {
+				this.closeAndSave(icon, this.color);
+			});
+
+			if (Platform.isPhone) this.iconManager.setEventListener(iconEl, 'contextmenu', () => {
+				navigator.vibrate?.(100); // Not supported on iOS
+				displayTooltip(iconEl, iconName, { placement: 'top' });
+			});
+		});
+	}
+
+	/**
+	 * Progressively render remaining browse icons in chunks via requestAnimationFrame.
+	 */
+	private scheduleBrowseRender(startIndex: number, batchSize: number): void {
+		this.browseRenderTimer = requestAnimationFrame(() => {
+			this.browseRenderTimer = null;
+			const endIndex = Math.min(startIndex + batchSize, this.searchResults.length);
+			for (let i = startIndex; i < endIndex; i++) {
+				this.renderSearchResult(this.searchResults[i]);
+			}
+			if (endIndex < this.searchResults.length) {
+				this.scheduleBrowseRender(endIndex, batchSize);
+			}
+		});
 	}
 
 	/**
@@ -872,6 +907,10 @@ export default class IconPicker extends Modal {
 	 * @override
 	 */
 	onClose(): void {
+		if (this.browseRenderTimer !== null) {
+			cancelAnimationFrame(this.browseRenderTimer);
+			this.browseRenderTimer = null;
+		}
 		this.contentEl.empty();
 		this.iconManager.stopEventListeners();
 		this.iconManager.stopMutationObservers();
