@@ -973,7 +973,7 @@ export default class IconicPlugin extends Plugin {
 		if (tFile instanceof TFile && (fileIcon.color || this.settings.showAllFileIcons)) {
 			if (extension === 'canvas') {
 				iconDefault = 'lucide-layout-dashboard';
-			} else if (extension === 'pdf') {
+			} else if (extension === 'md') {
 				iconDefault = 'lucide-file-text';
 			} else if (IMAGE_EXTENSIONS.has(extension)) {
 				iconDefault = 'lucide-image';
@@ -1080,7 +1080,7 @@ export default class IconicPlugin extends Plugin {
 				} else {
 					iconDefault = 'lucide-file';
 					if (!unloading) {
-						if (extension === 'pdf') {
+						if (extension === 'md') {
 							iconDefault = 'lucide-file-text';
 						} else if (IMAGE_EXTENSIONS.has(extension)) {
 							iconDefault = 'lucide-image';
