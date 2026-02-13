@@ -950,18 +950,33 @@ export default class IconPicker extends Modal {
 		this.overruleEl?.remove();
 		let page: Category;
 		let rule: RuleItem | null = null;
+		let isOverride = false;
 
 		// Determine which rule to display
 		if (this.items.length > 1) {
+			let hasOverride = false;
+			let hasOverrule = false;
 			for (const item of this.items) {
-				rule = this.plugin.ruleManager.checkRuling(item.category, item.id);
-				page = item.category;
-				if (rule) break;
+				const itemRule = this.plugin.ruleManager.checkRuling(item.category, item.id);
+				if (itemRule) {
+					if (item.icon || item.color) {
+						hasOverride = true;
+					} else {
+						hasOverrule = true;
+					}
+					if (!rule) {
+						rule = itemRule;
+						page = item.category;
+					}
+				}
 			}
+			// If there are both overrides and overrules, prefer the overrule message
+			isOverride = hasOverride && !hasOverrule;
 		} else {
 			const item = this.items[0];
 			rule = this.plugin.ruleManager.checkRuling(item.category, item.id);
 			page = item.category;
+			isOverride = !!(rule && (item.icon || item.color));
 		}
 
 		if (rule) {
@@ -980,7 +995,24 @@ export default class IconPicker extends Modal {
 			// Populate callout message
 			if (this.items.length > 1) {
 				this.iconManager.refreshIcon({ icon: 'lucide-book-image', color: 'gray' }, iconEl);
-				innerEl.setText(STRINGS.iconPicker.overrules);
+				innerEl.setText(isOverride ? STRINGS.iconPicker.overrides : STRINGS.iconPicker.overrules);
+			} else if (isOverride) {
+				this.iconManager.refreshIcon(rule, iconEl);
+				innerEl.setText(STRINGS.iconPicker.overridePrefix);
+				const linkEl = innerEl.createEl('a', { text: rule.name });
+				innerEl.appendText(STRINGS.iconPicker.overrideSuffix);
+				this.iconManager.setEventListener(linkEl, 'click', () => {
+					if (page && rule) RuleEditor.open(this.plugin, page, rule, newRule => {
+						if (!rule) return;
+						const isRulingChanged = newRule
+							? this.plugin.ruleManager.saveRule(page, newRule)
+							: this.plugin.ruleManager.deleteRule(page, rule.id);
+						if (isRulingChanged) {
+							this.plugin.refreshManagers(page);
+						}
+						this.updateOverruleReminder();
+					});
+				});
 			} else {
 				this.iconManager.refreshIcon(rule, iconEl);
 				innerEl.setText(STRINGS.iconPicker.overrulePrefix);

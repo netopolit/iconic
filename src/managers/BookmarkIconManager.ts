@@ -88,9 +88,9 @@ export default class BookmarkIconManager extends IconManager {
 			const bmark = bmarks[i];
 			if (!bmark || bmark.category === 'url') continue;
 
-			// Check for an icon ruling
+			// Check for an icon ruling (per-item icons take priority over rules)
 			let rule: RuleItem | BookmarkItem = bmark;
-			if (bmark.category === 'file' || bmark.category === 'folder') {
+			if ((bmark.category === 'file' || bmark.category === 'folder') && !bmark.icon && !bmark.color) {
 				rule = this.plugin.ruleManager.checkRuling(bmark.category, bmark.id, unloading) ?? bmark;
 			}
 

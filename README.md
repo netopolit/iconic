@@ -35,11 +35,11 @@ You can also choose one of nine optional colors per icon. These colors follow th
 
 ![Icon picker](icon-picker.webp)
 
-The icon picker will also display a warning if a rule in your rulebook is overruling its icon. To learn about that feature, see below.
+The icon picker will also display a reminder if a rule in your rulebook applies to an item. If the item has no custom icon, the reminder warns that the rule is overruling it. If you've set a custom icon on the item, the reminder confirms that your icon is overriding the rule.
 
 ### Setting up rules
 
-You can set up a rulebook to automate your file & folder icons based on a variety of conditions, like their name, their extension, their parent folder, their tags, their property values, the date you've created or modified them, and even the current time of day. Automated icons never remove your custom icons — only replace them visually — so you can be as experimental as you want.
+You can set up a rulebook to automate your file & folder icons based on a variety of conditions, like their name, their extension, their parent folder, their tags, their property values, the date you've created or modified them, and even the current time of day. If you set a custom icon on a specific file or folder, it takes priority over any matching rule, acting as an exception. Remove the custom icon to let the rule take effect again.
 
 Open the rulebook from the ribbon, from the plugin settings, or by using the `Open rulebook` command. There are currently two pages in the rulebook: `File rules` and `Folder rules`, which affect files and folders respectively.
 

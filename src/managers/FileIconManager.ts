@@ -85,9 +85,10 @@ export default class FileIconManager extends IconManager {
 			const file = fileMap.get(selfEl?.dataset.path ?? '');
 			if (!file) continue;
 
-			// Check for an icon ruling
+			// Check for an icon ruling (per-item icons take priority over rules)
 			const page = file.items ? 'folder' : 'file';
-			const rule = this.plugin.ruleManager.checkRuling(page, file.id, unloading) ?? file;
+			const hasExplicitIcon = file.icon || file.color;
+			const rule = hasExplicitIcon ? file : (this.plugin.ruleManager.checkRuling(page, file.id, unloading) ?? file);
 
 			if (file.items) {
 				// Refresh children immediately if folder is expanded

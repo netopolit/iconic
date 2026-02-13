@@ -52,7 +52,7 @@ Specialized **IconManager** subclasses in `src/managers/` each handle a distinct
 
 Support managers:
 - `MenuManager` — Intercepts context menus via Proxy pattern to inject "Change icon" items
-- `RuleManager` — Evaluates conditional rules for automated file/folder icons
+- `RuleManager` — Evaluates conditional rules for automated file/folder icons. Per-item icons/colors take priority over rules (act as exceptions); rule evaluation is skipped when an item has an explicit icon or color
 
 ### Dialogs (`src/dialogs/`)
 
