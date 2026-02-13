@@ -154,13 +154,13 @@ interface IconicSettings {
 }
 
 const DEFAULT_SETTINGS: IconicSettings = {
-	biggerIcons: 'mobile',
-	clickableIcons: 'desktop',
-	showAllFileIcons: false,
-	showAllFolderIcons: false,
+	biggerIcons: 'on',
+	clickableIcons: 'off',
+	showAllFileIcons: true,
+	showAllFolderIcons: true,
 	minimalFolderIcons: true,
 	showMarkdownTabIcons: true,
-	showTitleIcons: true,
+	showTitleIcons: false,
 	showTagPillIcons: false,
 	showMenuActions: true,
 	showSuggestionIcons: false,
