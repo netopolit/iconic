@@ -6,6 +6,9 @@
 #
 # Note: vaults.sh is gitignored to keep your paths private
 
+PLUGIN_ID=$(cd "$(dirname "${BASH_SOURCE[0]}")" && node -p "require('./manifest.json').id")
+PLUGIN_PATH=".obsidian/plugins/$PLUGIN_ID"
+
 # Base path where your vaults are stored
 VAULTS_BASE="/Users/yourname/Documents"
 

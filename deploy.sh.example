@@ -17,8 +17,6 @@ if [ ${#VAULTS[@]} -eq 0 ]; then
   exit 1
 fi
 
-PLUGIN_PATH=".obsidian/plugins/iconic"
-
 # Interactive vault selection
 cursor=0
 for ((i=0; i<${#VAULTS[@]}; i++)); do checked[$i]=1; done
