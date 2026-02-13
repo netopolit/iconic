@@ -73,16 +73,22 @@ export default class ConditionSetting extends Setting {
 		);
 
 		// Drag & drop (mouse)
-		this.gripEl.addEventListener('pointerdown', () => {
-			this.settingEl.draggable = true;
-		});
-		this.settingEl.addEventListener('dragstart', event => {
+		this.gripEl.addEventListener('pointerdown', (event: PointerEvent) => {
+			if (event.pointerType === 'touch') return; // Handled by touch events below
+			event.preventDefault();
+			const doc = this.settingEl.doc;
+			const onPointerMove = (e: PointerEvent) => {
+				this.dragCallback?.(e.clientX, e.clientY);
+			};
+			const onPointerUp = () => {
+				doc.removeEventListener('pointermove', onPointerMove);
+				doc.removeEventListener('pointerup', onPointerUp);
+				this.dragEndCallback?.();
+			};
+			doc.addEventListener('pointermove', onPointerMove);
+			doc.addEventListener('pointerup', onPointerUp);
 			this.dragStartCallback?.(event.clientX, event.clientY);
 		});
-		this.settingEl.addEventListener('drag', event => {
-			this.dragCallback?.(event.clientX, event.clientY);
-		});
-		this.settingEl.addEventListener('dragend', () => this.dragEndCallback?.());
 
 		// Drag & drop (multi-touch)
 		this.gripEl.addEventListener('touchstart', event => {
