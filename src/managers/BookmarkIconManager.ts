@@ -107,9 +107,15 @@ export default class BookmarkIconManager extends IconManager {
 					attributeOldValue: true
 				}, mutation => {
 					if (mutation.target instanceof HTMLElement && mutation.target.hasClass('is-collapsed') !== mutation.oldValue?.includes('is-collapsed')) {
-						const childItemEls = itemEl.findAll(':scope > .tree-item-children > .tree-item');
-						if (bmark.items && childItemEls) {
-							this.refreshChildIcons([bmark, ...bmark.items], [itemEl, ...childItemEls]);
+						if (mutation.target.hasClass('is-collapsed')) {
+							// Collapsed — only update the folder's own icon
+							this.refreshChildIcons([bmark], [itemEl]);
+						} else {
+							// Expanded — update folder + newly visible children
+							const childItemEls = itemEl.findAll(':scope > .tree-item-children > .tree-item');
+							if (bmark.items && childItemEls) {
+								this.refreshChildIcons([bmark, ...bmark.items], [itemEl, ...childItemEls]);
+							}
 						}
 					}
 				});

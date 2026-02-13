@@ -19,8 +19,10 @@ export default class EditorIconManager extends IconManager {
 		// Style hashtags in reading mode
 		this.plugin.registerMarkdownPostProcessor(sectionEl => {
 			const tags = this.plugin.getTagItems();
+			const tagMap = new Map<string, TagItem>();
+			for (const tag of tags) tagMap.set(tag.id, tag);
 			const tagEls = sectionEl.findAll('a.tag');
-			this.refreshReadingModeHashtags(tags, tagEls);
+			this.refreshReadingModeHashtags(tagMap, tagEls);
 		});
 
 		// eslint-disable-next-line @typescript-eslint/no-this-alias
@@ -199,13 +201,14 @@ export default class EditorIconManager extends IconManager {
 		const props = this.plugin.getPropertyItems(unloading);
 		this.refreshPropertyIcons(props, view);
 
-		// Refresh `tags` property
+		// Refresh `tags` property and hashtags (share one tag map)
 		const tags = this.plugin.getTagItems(unloading);
-		this.refreshTagsPropertyIcons(tags, view, unloading);
+		const tagMap = new Map<string, TagItem>();
+		for (const tag of tags) tagMap.set(tag.id, tag);
+		this.refreshTagsPropertyIcons(tagMap, view, unloading);
 
-		// Refresh hashtags
 		const tagEls = view.containerEl.findAll('a.tag');
-		this.refreshReadingModeHashtags(tags, tagEls, unloading);
+		this.refreshReadingModeHashtags(tagMap, tagEls, unloading);
 		this.refreshLivePreviewMode(view.editor);
 	}
 
@@ -346,16 +349,12 @@ export default class EditorIconManager extends IconManager {
 	/**
 	 * Refresh all tag icons in the `tags` property.
 	 */
-	private refreshTagsPropertyIcons(tags: TagItem[], view: MarkdownView, unloading?: boolean): void {
+	private refreshTagsPropertyIcons(tagMap: Map<string, TagItem>, view: MarkdownView, unloading?: boolean): void {
 		// @ts-expect-error (Private API)
 		const propListEl: HTMLElement = view.metadataEditor?.propertyListEl;
 		if (!propListEl) return;
 		const propTagEls = view.contentEl.findAll('.metadata-property[data-property-key="tags"] .multi-select-pill');
 		if (!propTagEls) return;
-
-		// Build Map for O(1) tag lookups
-		const tagMap = new Map<string, TagItem>();
-		for (const tag of tags) tagMap.set(tag.id, tag);
 
 		// Refresh each tag pill
 		for (const propTagEl of propTagEls) {
@@ -371,11 +370,7 @@ export default class EditorIconManager extends IconManager {
 	/**
 	 * Refresh all hashtag elements in reading mode.
 	 */
-	private refreshReadingModeHashtags(tags: TagItem[], tagEls: HTMLElement[], unloading?: boolean): void {
-		// Build Map for O(1) tag lookups
-		const tagMap = new Map<string, TagItem>();
-		for (const tag of tags) tagMap.set(tag.id, tag);
-
+	private refreshReadingModeHashtags(tagMap: Map<string, TagItem>, tagEls: HTMLElement[], unloading?: boolean): void {
 		for (const tagEl of tagEls) {
 			const tagId = tagEl.getAttribute('href')?.replace('#', '');
 			if (!tagId) continue;
