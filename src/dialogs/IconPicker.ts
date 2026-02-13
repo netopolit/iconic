@@ -748,8 +748,8 @@ export default class IconPicker extends Modal {
 			this.cachedFilteredIcons.sort(([, a], [, b]) => a.localeCompare(b));
 		}
 
-		// Browse mode: show all pack icons when a specific pack is selected
-		const isBrowseMode = !!packFilter;
+		// Browse mode: show all icons as a grid (vs. search mode with limited results)
+		const isBrowseMode = !query || !!packFilter;
 		this.searchResultsSetting.settingEl.toggleClass('iconic-browse-mode', isBrowseMode);
 
 		this.searchResults.length = 0;
