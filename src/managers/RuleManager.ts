@@ -589,8 +589,8 @@ export default class RuleManager {
 			if (condition.source.startsWith('property:')) {
 				const propId = condition.source.replace('property:', '');
 				if (fmMap) {
-					const fmValue = fmMap.get(propId.toLowerCase());
-					if (fmValue !== undefined) source = fmValue as typeof source;
+					const fmValue: typeof source = fmMap.get(propId.toLowerCase()) as typeof source;
+					if (fmValue !== undefined) source = fmValue;
 				}
 			} else switch (condition.source) {
 				case 'icon': {
