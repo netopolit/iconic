@@ -22,7 +22,7 @@ if [ ${#VAULTS[@]} -eq 0 ]; then
   exit 1
 fi
 
-PLUGIN_PATH=".obsidian/plugins/file-notes"
+PLUGIN_PATH=".obsidian/plugins/iconic"
 
 for vault in "${VAULTS[@]}"; do
   dest="$VAULTS_BASE/$vault/$PLUGIN_PATH"
