@@ -43,7 +43,12 @@ No test framework is configured. Type-checking via `tsc` is the primary automate
 
 Specialized **IconManager** subclasses in `src/managers/` each handle a distinct UI area (tabs, files, bookmarks, tags, properties, ribbon, etc.). The base class `IconManager.ts` provides:
 - `refreshIcon()` — renders an icon/emoji with optional color into a DOM element
+- `changeIconItem()` / `removeIconItem()` / `editRuleItem()` — shared menu item callbacks used by all managers
+- `setContextMenu()` — guards a contextmenu listener behind the `showMenuActions` setting
+- `refreshFolderSidekick()` — manages the sidekick icon for folders (used by File and Bookmark managers)
 - Event listener and MutationObserver lifecycle management (auto-cleanup on unload)
+
+`IconicPlugin.openIconPicker()` handles single/multi-item branching for the icon picker dialog, used by all managers instead of calling `IconPicker` directly.
 
 Support managers:
 - `MenuManager` — Intercepts context menus via Proxy pattern to inject "Change icon" items
