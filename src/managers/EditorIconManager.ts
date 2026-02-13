@@ -1,11 +1,10 @@
 import { Editor, MarkdownView, Menu } from 'obsidian';
 import { EditorView, ViewPlugin, ViewUpdate } from '@codemirror/view';
 import { syntaxTree } from '@codemirror/language';
-import IconicPlugin, { TagItem, PropertyItem, STRINGS } from 'src/IconicPlugin';
+import IconicPlugin, { TagItem, PropertyItem } from 'src/IconicPlugin';
 import ColorUtils from 'src/ColorUtils';
 import IconManager from 'src/managers/IconManager';
 import RuleEditor from 'src/dialogs/RuleEditor';
-import IconPicker from 'src/dialogs/IconPicker';
 
 /**
  * Handles icons in the editor window of Markdown tabs.
@@ -144,10 +143,9 @@ export default class EditorIconManager extends IconManager {
 				const prop = domPropId ? this.plugin.getPropertyItem(domPropId) : null;
 				if (!prop) return;
 				if (this.plugin.isSettingEnabled('clickableIcons')) {
-					IconPicker.openSingle(this.plugin, prop, (newIcon, newColor) => {
-						this.plugin.savePropertyIcon(prop, newIcon, newColor);
-						this.plugin.refreshManagers('property');
-					});
+					this.plugin.openIconPicker([prop],
+						(icon, color) => this.plugin.savePropertyIcon(prop, icon, color),
+						null, 'property');
 					event.stopPropagation();
 				} else {
 					this.onPropertyContextMenu(prop.id);
@@ -155,20 +153,16 @@ export default class EditorIconManager extends IconManager {
 			}
 		}, { capture: true });
 
-		if (this.plugin.settings.showMenuActions) {
-			this.setEventListener(propsEl, 'contextmenu', event => {
-				const pointEls = event.doc.elementsFromPoint(event.x, event.y);
-				const iconEl = pointEls.find(el => el.hasClass('metadata-property-icon'));
-				const propEl = pointEls.find(el => el.hasClass('metadata-property'));
-				if (iconEl && propEl instanceof HTMLElement) {
-					const domPropId = propEl.dataset.propertyKey; // Lowercase
-					const prop = domPropId ? this.plugin.getPropertyItem(domPropId) : null;
-					if (prop) this.onPropertyContextMenu(prop.id);
-				}
-			}, { capture: true });
-		} else {
-			this.stopEventListener(propsEl, 'contextmenu');
-		}
+		this.setContextMenu(propsEl, event => {
+			const pointEls = event.doc.elementsFromPoint(event.x, event.y);
+			const iconEl = pointEls.find(el => el.hasClass('metadata-property-icon'));
+			const propEl = pointEls.find(el => el.hasClass('metadata-property'));
+			if (iconEl && propEl instanceof HTMLElement) {
+				const domPropId = propEl.dataset.propertyKey; // Lowercase
+				const prop = domPropId ? this.plugin.getPropertyItem(domPropId) : null;
+				if (prop) this.onPropertyContextMenu(prop.id);
+			}
+		}, { capture: true });
 	}
 
 	/**
@@ -263,10 +257,9 @@ export default class EditorIconManager extends IconManager {
 		// Refresh icon
 		if (this.plugin.isSettingEnabled('clickableIcons')) {
 			this.refreshIcon(rule, iconEl, () => {
-				IconPicker.openSingle(this.plugin, file, (newIcon, newColor) => {
-					this.plugin.saveFileIcon(file, newIcon, newColor);
-					this.plugin.refreshManagers('file');
-				});
+				this.plugin.openIconPicker([file],
+					(icon, color) => this.plugin.saveFileIcon(file, icon, color),
+					null, 'file');
 			});
 		} else {
 			this.refreshIcon(rule, iconEl);
@@ -274,50 +267,34 @@ export default class EditorIconManager extends IconManager {
 		iconEl.addClass('iconic-icon');
 
 		// Add menu actions
-		if (this.plugin.settings.showMenuActions) {
-			this.setEventListener(iconEl, 'contextmenu', event => {
-				navigator.vibrate?.(100); // Not supported on iOS
-				const menu = new Menu();
-				menu.addItem(item => item
-					.setTitle(STRINGS.menu.changeIcon)
-					.setIcon('lucide-image-plus')
-					.setSection('icon')
-					.onClick(() => {
-						IconPicker.openSingle(this.plugin, file, (newIcon, newColor) => {
-							this.plugin.saveFileIcon(file, newIcon, newColor);
-							this.plugin.refreshManagers('file', 'folder');
-						});
-					})
-				);
-				if (file.icon || file.color) menu.addItem(item => item
-					.setTitle(STRINGS.menu.removeIcon)
-					.setIcon('lucide-image-minus')
-					.setSection('icon')
-					.onClick(() => {
-						this.plugin.saveFileIcon(file, null, null);
+		this.setContextMenu(iconEl, event => {
+			navigator.vibrate?.(100); // Not supported on iOS
+			const menu = new Menu();
+			menu.addItem(this.changeIconItem([file], () => {
+				this.plugin.openIconPicker([file],
+					(icon, color) => this.plugin.saveFileIcon(file, icon, color),
+					null, 'file', 'folder');
+			}));
+			if (file.icon || file.color) {
+				menu.addItem(this.removeIconItem([file], () => {
+					this.plugin.saveFileIcon(file, null, null);
+					this.plugin.refreshManagers('file');
+				}));
+			}
+			const rule = this.plugin.ruleManager.checkRuling('file', file.id);
+			if (rule) {
+				menu.addItem(this.editRuleItem(() => RuleEditor.open(this.plugin, 'file', rule, newRule => {
+					const isRulingChanged = newRule
+						? this.plugin.ruleManager.saveRule('file', newRule)
+						: this.plugin.ruleManager.deleteRule('file', rule.id);
+					if (isRulingChanged) {
+						this.refreshIcons();
 						this.plugin.refreshManagers('file');
-					})
-				);
-				const rule = this.plugin.ruleManager.checkRuling('file', file.id);
-				if (rule) menu.addItem(item => { item
-					.setTitle('Edit rule...')
-					.setIcon('lucide-image-play')
-					.setSection('icon')
-					.onClick(() => RuleEditor.open(this.plugin, 'file', rule, newRule => {
-						const isRulingChanged = newRule
-							? this.plugin.ruleManager.saveRule('file', newRule)
-							: this.plugin.ruleManager.deleteRule('file', rule.id);
-						if (isRulingChanged) {
-							this.refreshIcons();
-							this.plugin.refreshManagers('file');
-						}
-					}));
-				});
-				menu.showAtPosition(event);
-			});
-		} else {
-			this.stopEventListener(iconEl, 'contextmenu');
-		}
+					}
+				})));
+			}
+			menu.showAtPosition(event);
+		});
 	}
 
 	/**
@@ -408,10 +385,9 @@ export default class EditorIconManager extends IconManager {
 			tagEl.prepend(iconEl);
 			if (tag && this.plugin.isSettingEnabled('clickableIcons')) {
 				this.refreshIcon(tag, iconEl, event => {
-					IconPicker.openSingle(this.plugin, tag, (newIcon, newColor) => {
-						this.plugin.saveTagIcon(tag, newIcon, newColor);
-						this.plugin.refreshManagers('tag');
-					});
+					this.plugin.openIconPicker([tag],
+						(icon, color) => this.plugin.saveTagIcon(tag, icon, color),
+						null, 'tag');
 					event.stopPropagation();
 				});
 			} else {
@@ -424,11 +400,7 @@ export default class EditorIconManager extends IconManager {
 		this.setTagColor(tagEl, tag?.color ?? null);
 
 		// Set menu actions
-		if (this.plugin.settings.showMenuActions) {
-			this.setEventListener(tagEl, 'contextmenu', event => onContextMenu(event));
-		} else {
-			this.stopEventListener(tagEl, 'contextmenu');
-		}
+		this.setContextMenu(tagEl, event => onContextMenu(event));
 	}
 
 	/**
@@ -465,27 +437,18 @@ export default class EditorIconManager extends IconManager {
 		const prop = this.plugin.getPropertyItem(propId);
 
 		// Change icon
-		this.plugin.menuManager.addItemAfter(['action.changeType', 'action'], item => item
-			.setTitle(STRINGS.menu.changeIcon)
-			.setIcon('lucide-image-plus')
-			.setSection('icon')
-			.onClick(() => IconPicker.openSingle(this.plugin, prop, (newIcon, newColor) => {
-				this.plugin.savePropertyIcon(prop, newIcon, newColor);
-				this.plugin.refreshManagers('property');
-			}))
-		);
+		this.plugin.menuManager.addItemAfter(['action.changeType', 'action'], this.changeIconItem([prop], () => {
+			this.plugin.openIconPicker([prop],
+				(icon, color) => this.plugin.savePropertyIcon(prop, icon, color),
+				null, 'property');
+		}));
 
 		// Remove icon / Reset color
 		if (prop.icon || prop.color) {
-			this.plugin.menuManager.addItem(item => item
-				.setTitle(prop.icon ? STRINGS.menu.removeIcon : STRINGS.menu.resetColor)
-				.setIcon(prop.icon ? 'lucide-image-minus' : 'lucide-rotate-ccw')
-				.setSection('icon')
-				.onClick(() => {
-					this.plugin.savePropertyIcon(prop, null, null);
-					this.plugin.refreshManagers('property');
-				})
-			);
+			this.plugin.menuManager.addItem(this.removeIconItem([prop], () => {
+				this.plugin.savePropertyIcon(prop, null, null);
+				this.plugin.refreshManagers('property');
+			}));
 		}
 	}
 
@@ -498,27 +461,18 @@ export default class EditorIconManager extends IconManager {
 		if (!tag) return;
 
 		// Change icon
-		this.plugin.menuManager.addItemAfter(isEditingMode ? [] : 'selection', menuItem => menuItem
-			.setTitle(STRINGS.menu.changeIcon)
-			.setIcon('lucide-image-plus')
-			.setSection('icon')
-			.onClick(() => IconPicker.openSingle(this.plugin, tag, (newIcon, newColor) => {
-				this.plugin.saveTagIcon(tag, newIcon, newColor);
-				this.plugin.refreshManagers('tag');
-			}))
-		);
+		this.plugin.menuManager.addItemAfter(isEditingMode ? [] : 'selection', this.changeIconItem([tag], () => {
+			this.plugin.openIconPicker([tag],
+				(icon, color) => this.plugin.saveTagIcon(tag, icon, color),
+				null, 'tag');
+		}));
 
 		// Remove icon / Reset color
 		if (tag.icon || tag.color) {
-			this.plugin.menuManager.addItem(menuItem => menuItem
-				.setTitle(tag.icon ? STRINGS.menu.removeIcon : STRINGS.menu.resetColor)
-				.setIcon(tag.icon ? 'lucide-image-minus' : 'lucide-rotate-ccw')
-				.setSection('icon')
-				.onClick(() => {
-					this.plugin.saveTagIcon(tag, null, null);
-					this.plugin.refreshManagers('tag');
-				})
-			);
+			this.plugin.menuManager.addItem(this.removeIconItem([tag], () => {
+				this.plugin.saveTagIcon(tag, null, null);
+				this.plugin.refreshManagers('tag');
+			}));
 		}
 	}
 

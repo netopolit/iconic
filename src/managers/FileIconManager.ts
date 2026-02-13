@@ -1,8 +1,7 @@
 import { WorkspaceLeaf } from 'obsidian';
-import IconicPlugin, { FileItem, STRINGS } from 'src/IconicPlugin';
+import IconicPlugin, { FileItem } from 'src/IconicPlugin';
 import IconManager from 'src/managers/IconManager';
 import RuleEditor from 'src/dialogs/RuleEditor';
-import IconPicker from 'src/dialogs/IconPicker';
 
 /**
  * Handles icons in the Files pane.
@@ -149,33 +148,16 @@ export default class FileIconManager extends IconManager {
 			}
 
 			if (file.items) {
-				// Toggle default icon based on expand/collapse state
-				if (file.iconDefault) file.iconDefault = iconEl.hasClass('is-collapsed')
-					? 'lucide-folder-closed'
-					: 'lucide-folder-open';
-			}
-
-			let folderIconEl = selfEl.find(':scope > .iconic-sidekick:not(.tree-item-icon)');
-			if (this.plugin.settings.minimalFolderIcons || !this.plugin.settings.showAllFolderIcons && !rule.icon && !rule.iconDefault) {
-				folderIconEl?.remove();
-			} else {
-				const arrowColor = rule.icon || rule.iconDefault ? null : rule.color;
-				this.refreshIcon({ icon: null, color: arrowColor }, iconEl);
-				folderIconEl = folderIconEl ?? selfEl.createDiv({ cls: 'iconic-sidekick' });
-				if (iconEl.nextElementSibling !== folderIconEl) {
-					iconEl.insertAdjacentElement('afterend', folderIconEl);
-				}
-				iconEl = folderIconEl;
+				iconEl = this.refreshFolderSidekick(file, rule, selfEl, iconEl);
 			}
 
 			if (iconEl.hasClass('collapse-icon') && !rule.icon && !rule.iconDefault) {
 				this.refreshIcon(rule, iconEl); // Skip click listener if icon will be a collapse arrow
 			} else if (this.plugin.isSettingEnabled('clickableIcons')) {
 				this.refreshIcon(rule, iconEl, event => {
-					IconPicker.openSingle(this.plugin, file, (newIcon, newColor) => {
-						this.plugin.saveFileIcon(file, newIcon, newColor);
-						this.plugin.refreshManagers('file', 'folder');
-					});
+					this.plugin.openIconPicker([file],
+						(icon, color) => this.plugin.saveFileIcon(file, icon, color),
+						null, 'file', 'folder');
 					event.stopPropagation();
 				});
 			} else {
@@ -229,53 +211,23 @@ export default class FileIconManager extends IconManager {
 		}
 
 		// Change icon(s)
-		const changeTitle = files.length === 1
-			? STRINGS.menu.changeIcon
-			: STRINGS.menu.changeIcons.replace('{#}', files.length.toString());
-		this.plugin.menuManager.addItemAfter(['action-primary', 'close', 'open'], item => item
-			.setTitle(changeTitle)
-			.setIcon('lucide-image-plus')
-			.setSection('icon')
-			.onClick(() => {
-				if (files.length === 1) {
-					IconPicker.openSingle(this.plugin, files[0], (newIcon, newColor) => {
-						this.plugin.saveFileIcon(files[0], newIcon, newColor);
-						this.plugin.refreshManagers('file', 'folder');
-					});
-				} else {
-					IconPicker.openMulti(this.plugin, files, (newIcon, newColor) => {
-						this.plugin.saveFileIcons(files, newIcon, newColor);
-						this.plugin.refreshManagers('file', 'folder');
-					});
-				}
-			})
-		);
+		this.plugin.menuManager.addItemAfter(['action-primary', 'close', 'open'], this.changeIconItem(files, () => {
+			this.plugin.openIconPicker(files,
+				(icon, color) => this.plugin.saveFileIcon(files[0], icon, color),
+				(icon, color) => this.plugin.saveFileIcons(files, icon, color),
+				'file', 'folder');
+		}));
 
 		// Remove icon(s) / Reset color(s)
-		const anyIcons = files.some(file => file.icon);
-		const anyColors = files.some(file => file.color);
-		const removalTitle = files.length === 1
-			? files[0].icon
-				? STRINGS.menu.removeIcon
-				: STRINGS.menu.resetColor
-			: anyIcons
-				? STRINGS.menu.removeIcons.replace('{#}', files.length.toString())
-				: STRINGS.menu.resetColors.replace('{#}', files.length.toString())
-		const removalIcon = anyIcons ? 'lucide-image-minus' : 'lucide-rotate-ccw';
-		if (anyIcons || anyColors) {
-			this.plugin.menuManager.addItem(item => item
-				.setTitle(removalTitle)
-				.setIcon(removalIcon)
-				.setSection('icon')
-				.onClick(() => {
-					if (files.length === 1) {
-						this.plugin.saveFileIcon(files[0], null, null);
-					} else {
-						this.plugin.saveFileIcons(files, null, null);
-					}
-					this.plugin.refreshManagers('file', 'folder');
-				})
-			);
+		if (files.some(file => file.icon || file.color)) {
+			this.plugin.menuManager.addItem(this.removeIconItem(files, () => {
+				if (files.length === 1) {
+					this.plugin.saveFileIcon(files[0], null, null);
+				} else {
+					this.plugin.saveFileIcons(files, null, null);
+				}
+				this.plugin.refreshManagers('file', 'folder');
+			}));
 		}
 
 		// Edit rule
@@ -283,20 +235,15 @@ export default class FileIconManager extends IconManager {
 			const page = files[0].items ? 'folder' : 'file';
 			const rule = this.plugin.ruleManager.checkRuling(page, files[0].id);
 			if (rule) {
-				this.plugin.menuManager.addItem(item => { item
-					.setTitle(STRINGS.menu.editRule)
-					.setIcon('lucide-image-play')
-					.setSection('icon')
-					.onClick(() => RuleEditor.open(this.plugin, page, rule, newRule => {
-						const isRulingChanged = newRule
-							? this.plugin.ruleManager.saveRule(page, newRule)
-							: this.plugin.ruleManager.deleteRule(page, rule.id);
-						if (isRulingChanged) {
-							this.refreshIcons();
-							this.plugin.refreshManagers(page);
-						}
-					}));
-				});
+				this.plugin.menuManager.addItem(this.editRuleItem(() => RuleEditor.open(this.plugin, page, rule, newRule => {
+					const isRulingChanged = newRule
+						? this.plugin.ruleManager.saveRule(page, newRule)
+						: this.plugin.ruleManager.deleteRule(page, rule.id);
+					if (isRulingChanged) {
+						this.refreshIcons();
+						this.plugin.refreshManagers(page);
+					}
+				})));
 			}
 		}
 	}

@@ -1,8 +1,7 @@
 import { Menu, Platform } from 'obsidian';
-import IconicPlugin, { RibbonItem, STRINGS } from 'src/IconicPlugin';
+import IconicPlugin, { RibbonItem } from 'src/IconicPlugin';
 import MenuManager from 'src/managers/MenuManager';
 import IconManager from 'src/managers/IconManager';
-import IconPicker from 'src/dialogs/IconPicker';
 
 /**
  * Handles icons in the app ribbon.
@@ -100,13 +99,9 @@ export default class RibbonIconManager extends IconManager {
 				this.refreshIcon(ribbonItem, iconEl);
 
 				// Add context menu
-				if (this.plugin.settings.showMenuActions) {
-					this.setEventListener(iconEl, 'contextmenu', event => {
-						this.onContextMenu(ribbonItem.id, event);
-					}, { capture: true });
-				} else {
-					this.stopEventListener(iconEl, 'contextmenu');
-				}
+				this.setContextMenu(iconEl, event => {
+					this.onContextMenu(ribbonItem.id, event);
+				}, { capture: true });
 			}
 		}
 	}
@@ -128,11 +123,10 @@ export default class RibbonIconManager extends IconManager {
 				const quickItem = this.plugin.getRibbonItem(quickItemId);
 				const quickIconEl = containerEl.find('.setting-item-control > .extra-setting-button');
 				this.refreshIcon(quickItem, quickIconEl, () => {
-					IconPicker.openSingle(this.plugin, quickItem, (newIcon, newColor) => {
-						this.plugin.saveRibbonIcon(quickItem, newIcon, newColor);
-						this.plugin.refreshManagers('ribbon');
+					this.plugin.openIconPicker([quickItem], (icon, color) => {
+						this.plugin.saveRibbonIcon(quickItem, icon, color);
 						this.refreshConfigIcons(containerEl);
-					});
+					}, null, 'ribbon');
 				});
 			}
 		}
@@ -158,11 +152,10 @@ export default class RibbonIconManager extends IconManager {
 			}
 			const buttonEl = itemEl.find(':scope > .' + buttonClass);
 			this.refreshIcon(item, iconEl, event => {
-				IconPicker.openSingle(this.plugin, item, (newIcon, newColor) => {
-					this.plugin.saveRibbonIcon(item, newIcon, newColor);
-					this.plugin.refreshManagers('ribbon');
+				this.plugin.openIconPicker([item], (icon, color) => {
+					this.plugin.saveRibbonIcon(item, icon, color);
 					this.refreshConfigIcons(containerEl);
-				});
+				}, null, 'ribbon');
 				event.stopPropagation();
 			});
 			this.setEventListener(buttonEl, 'click', () => this.refreshConfigIcons(containerEl));
@@ -187,27 +180,18 @@ export default class RibbonIconManager extends IconManager {
 		}
 
 		// Change icon
-		menu.addItem(menuItem => menuItem
-			.setTitle(STRINGS.menu.changeIcon)
-			.setIcon('lucide-image-plus')
-			.setSection('icon')
-			.onClick(() => IconPicker.openSingle(this.plugin, ribbonItem, (newIcon, newColor) => {
-				this.plugin.saveRibbonIcon(ribbonItem, newIcon, newColor);
-				this.plugin.refreshManagers('ribbon');
-			}))
-		);
+		menu.addItem(this.changeIconItem([ribbonItem], () => {
+			this.plugin.openIconPicker([ribbonItem],
+				(icon, color) => this.plugin.saveRibbonIcon(ribbonItem, icon, color),
+				null, 'ribbon');
+		}));
 
 		// Remove icon / Reset color
 		if (ribbonItem.icon || ribbonItem.color) {
-			menu.addItem(menuItem => menuItem
-				.setTitle(ribbonItem.icon ? STRINGS.menu.removeIcon : STRINGS.menu.resetColor)
-				.setIcon(ribbonItem.icon ? 'lucide-image-minus' : 'lucide-rotate-ccw')
-				.setSection('icon')
-				.onClick(() => {
-					this.plugin.saveRibbonIcon(ribbonItem, null, null);
-					this.plugin.refreshManagers('ribbon');
-				})
-			);
+			menu.addItem(this.removeIconItem([ribbonItem], () => {
+				this.plugin.saveRibbonIcon(ribbonItem, null, null);
+				this.plugin.refreshManagers('ribbon');
+			}));
 		}
 
 		if (menu instanceof Menu) menu.showAtMouseEvent(event);

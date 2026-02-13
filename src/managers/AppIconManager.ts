@@ -1,8 +1,7 @@
 import { Menu, Platform } from 'obsidian';
-import IconicPlugin, { STRINGS, AppItemId } from 'src/IconicPlugin';
+import IconicPlugin, { AppItemId } from 'src/IconicPlugin';
 import ColorUtils from 'src/ColorUtils';
 import IconManager from 'src/managers/IconManager';
-import IconPicker from 'src/dialogs/IconPicker';
 
 const SVG_INFO = { attr: { 'aria-hidden': false, width: 12, height: 12, viewBox: '0 0 12 12' } };
 const MINIMIZE_RECT = { attr: { fill: 'currentColor', width: 10, height: 1, x: 1, y: 6 } };
@@ -48,13 +47,9 @@ export default class AppIconManager extends IconManager {
 			if (this.helpEl) {
 				const helpItem = this.plugin.getAppItem('help', unloading);
 				this.refreshIcon(helpItem, this.helpEl);
-				if (this.plugin.settings.showMenuActions) {
-					this.setEventListener(this.helpEl, 'contextmenu', event => {
-						this.onContextMenu('help', event);
-					});
-				} else {
-					this.stopEventListener(this.helpEl, 'contextmenu');
-				}
+				this.setContextMenu(this.helpEl, event => {
+					this.onContextMenu('help', event);
+				});
 			}
 		}
 
@@ -68,13 +63,9 @@ export default class AppIconManager extends IconManager {
 		if (this.settingsEl) {
 			const settingsItem = this.plugin.getAppItem('settings', unloading);
 			this.refreshIcon(settingsItem, this.settingsEl);
-			if (this.plugin.settings.showMenuActions) {
-				this.setEventListener(this.settingsEl, 'contextmenu', event => {
-					this.onContextMenu('settings', event);
-				});
-			} else {
-				this.stopEventListener(this.settingsEl, 'contextmenu');
-			}
+			this.setContextMenu(this.settingsEl, event => {
+				this.onContextMenu('settings', event);
+			});
 		}
 
 		// Sidebar pins
@@ -86,13 +77,9 @@ export default class AppIconManager extends IconManager {
 			for (const pinEl of this.pinEls) {
 				const pinItem = this.plugin.getAppItem('pin', unloading);
 				this.refreshIcon(pinItem, pinEl);
-				if (this.plugin.settings.showMenuActions) {
-					this.setEventListener(pinEl, 'contextmenu', event => {
-						this.onContextMenu('pin', event);
-					});
-				} else {
-					this.stopEventListener(pinEl, 'contextmenu');
-				}
+				this.setContextMenu(pinEl, event => {
+					this.onContextMenu('pin', event);
+				});
 			}
 		}
 
@@ -106,13 +93,9 @@ export default class AppIconManager extends IconManager {
 			if (iconEl) {
 				const item = this.plugin.getAppItem('sidebarLeft', unloading);
 				this.refreshIcon(item, iconEl);
-				if (this.plugin.settings.showMenuActions) {
-					this.setEventListener(sidebarLeftEl, 'contextmenu', event => {
-						this.onContextMenu('sidebarLeft', event);
-					});
-				} else {
-					this.stopEventListener(sidebarLeftEl, 'contextmenu');
-				}
+				this.setContextMenu(sidebarLeftEl, event => {
+					this.onContextMenu('sidebarLeft', event);
+				});
 			}
 		}
 
@@ -126,13 +109,9 @@ export default class AppIconManager extends IconManager {
 			if (iconEl) {
 				const item = this.plugin.getAppItem('sidebarRight', unloading);
 				this.refreshIcon(item, iconEl);
-				if (this.plugin.settings.showMenuActions) {
-					this.setEventListener(this.sidebarRightEl, 'contextmenu', event => {
-						this.onContextMenu('sidebarRight', event);
-					});
-				} else {
-					this.stopEventListener(this.sidebarRightEl, 'contextmenu');
-				}
+				this.setContextMenu(this.sidebarRightEl, event => {
+					this.onContextMenu('sidebarRight', event);
+				});
 			}
 		}
 
@@ -154,13 +133,9 @@ export default class AppIconManager extends IconManager {
 				const rectEl = this.minimizeEl.createSvg('svg', SVG_INFO).createSvg('rect', MINIMIZE_RECT);
 				if (item.color) rectEl.style.fill = ColorUtils.toRgb(item.color);
 			}
-			if (this.plugin.settings.showMenuActions) {
-				this.setEventListener(this.minimizeEl, 'contextmenu', event => {
-					this.onContextMenu('minimize', event);
-				});
-			} else {
-				this.stopEventListener(this.minimizeEl, 'contextmenu');
-			}
+			this.setContextMenu(this.minimizeEl, event => {
+				this.onContextMenu('minimize', event);
+			});
 		}
 
 		// Maximize / Restore down
@@ -186,13 +161,9 @@ export default class AppIconManager extends IconManager {
 					pathEl2.style.fill = ColorUtils.toRgb(item.color);
 				}
 			}
-			if (this.plugin.settings.showMenuActions) {
-				this.setEventListener(this.closeEl, 'contextmenu', event => {
-					this.onContextMenu('close', event);
-				});
-			} else {
-				this.stopEventListener(this.closeEl, 'contextmenu');
-			}
+			this.setContextMenu(this.closeEl, event => {
+				this.onContextMenu('close', event);
+			});
 		}
 	}
 
@@ -229,13 +200,9 @@ export default class AppIconManager extends IconManager {
 					if (item.color) rectEl.style.stroke = ColorUtils.toRgb(item.color);
 				}
 			}
-			if (this.plugin.settings.showMenuActions) {
-				this.setEventListener(this.maximizeEl, 'contextmenu', event => {
-					this.onContextMenu(isMaximized ? 'unmaximize' : 'maximize', event);
-				});
-			} else {
-				this.stopEventListener(this.maximizeEl, 'contextmenu');
-			}
+			this.setContextMenu(this.maximizeEl, event => {
+				this.onContextMenu(isMaximized ? 'unmaximize' : 'maximize', event);
+			});
 			this.setMutationsObserver(this.maximizeEl, { childList: true }, () => {
 				this.refreshMaximizeIcon();
 			});
@@ -256,25 +223,18 @@ export default class AppIconManager extends IconManager {
 		if (appItemId.startsWith('sidebar')) menu.addSeparator();
 
 		// Change icon
-		menu.addItem(menuItem => menuItem
-			.setTitle(STRINGS.menu.changeIcon)
-			.setIcon('lucide-image-plus')
-			.onClick(() => IconPicker.openSingle(this.plugin, appItem, (newIcon, newColor) => {
-				this.plugin.saveAppIcon(appItem, newIcon, newColor);
-				this.plugin.refreshManagers('app');
-			}))
-		);
+		menu.addItem(this.changeIconItem([appItem], () => {
+			this.plugin.openIconPicker([appItem],
+				(icon, color) => this.plugin.saveAppIcon(appItem, icon, color),
+				null, 'app');
+		}));
 
 		// Remove icon / Reset color
 		if (appItem.icon || appItem.color) {
-			menu.addItem(menuItem => menuItem
-				.setTitle(appItem.icon ? STRINGS.menu.removeIcon : STRINGS.menu.resetColor)
-				.setIcon(appItem.icon ? 'lucide-image-minus' : 'lucide-rotate-ccw')
-				.onClick(() => {
-					this.plugin.saveAppIcon(appItem, null, null);
-					this.plugin.refreshManagers('app');
-				})
-			);
+			menu.addItem(this.removeIconItem([appItem], () => {
+				this.plugin.saveAppIcon(appItem, null, null);
+				this.plugin.refreshManagers('app');
+			}));
 		}
 
 		if (menu instanceof Menu) menu.showAtMouseEvent(event);

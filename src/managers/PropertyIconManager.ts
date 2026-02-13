@@ -1,7 +1,6 @@
 import { WorkspaceLeaf } from 'obsidian';
-import IconicPlugin, { PropertyItem, STRINGS } from 'src/IconicPlugin';
+import IconicPlugin, { PropertyItem } from 'src/IconicPlugin';
 import IconManager from 'src/managers/IconManager';
-import IconPicker from 'src/dialogs/IconPicker';
 
 /**
  * Handles icons in the All Properties and File Properties panes.
@@ -88,10 +87,9 @@ export default class PropertyIconManager extends IconManager {
 			// Refresh icon
 			if (this.plugin.isSettingEnabled('clickableIcons')) {
 				this.refreshIcon(prop, iconEl, event => {
-					IconPicker.openSingle(this.plugin, prop, (newIcon, newColor) => {
-						this.plugin.savePropertyIcon(prop, newIcon, newColor);
-						this.plugin.refreshManagers('property');
-					});
+					this.plugin.openIconPicker([prop],
+						(icon, color) => this.plugin.savePropertyIcon(prop, icon, color),
+						null, 'property');
 					event.stopPropagation();
 				});
 			} else {
@@ -99,13 +97,9 @@ export default class PropertyIconManager extends IconManager {
 			}
 
 			// Add menu items
-			if (this.plugin.settings.showMenuActions) {
-				this.setEventListener(itemEl, 'contextmenu', () => {
-					this.onContextMenu(prop.id);
-				}, { capture: true });
-			} else {
-				this.stopEventListener(itemEl, 'contextmenu');
-			}
+			this.setContextMenu(itemEl, () => {
+				this.onContextMenu(prop.id);
+			}, { capture: true });
 		}
 
 		// File Properties pane
@@ -125,10 +119,9 @@ export default class PropertyIconManager extends IconManager {
 			// Refresh icon
 			if (this.plugin.isSettingEnabled('clickableIcons')) {
 				this.refreshIcon(prop, iconEl, event => {
-					IconPicker.openSingle(this.plugin, prop!, (newIcon, newColor) => {
-						this.plugin.savePropertyIcon(prop!, newIcon, newColor);
-						this.plugin.refreshManagers('property');
-					});
+					this.plugin.openIconPicker([prop],
+						(icon, color) => this.plugin.savePropertyIcon(prop, icon, color),
+						null, 'property');
 					event.stopPropagation();
 				});
 			} else {
@@ -136,13 +129,9 @@ export default class PropertyIconManager extends IconManager {
 			}
 
 			// Add menu items
-			if (this.plugin.settings.showMenuActions) {
-				this.setEventListener(propEl, 'contextmenu', () => {
-					this.onContextMenu(prop.id);
-				}, { capture: true });
-			} else {
-				this.stopEventListener(propEl, 'contextmenu');
-			}
+			this.setContextMenu(propEl, () => {
+				this.onContextMenu(prop.id);
+			}, { capture: true });
 		}
 
 		// Restart observers
@@ -177,54 +166,27 @@ export default class PropertyIconManager extends IconManager {
 			selectedProps.length = 0;
 		}
 
+		// Determine effective items list for menu title/action
+		const items = selectedProps.length < 2 ? [clickedProp] : selectedProps;
+
 		// Change icon(s)
-		const changeTitle = selectedProps.length < 2
-			? STRINGS.menu.changeIcon
-			: STRINGS.menu.changeIcons.replace('{#}', selectedProps.length.toString());
-		this.plugin.menuManager.addItemAfter(['action.changeType', 'action'], item => item
-			.setTitle(changeTitle)
-			.setIcon('lucide-image-plus')
-			.setSection('icon')
-			.onClick(() => {
-				if (selectedProps.length < 2) {
-					IconPicker.openSingle(this.plugin, clickedProp, (newIcon, newColor) => {
-						this.plugin.savePropertyIcon(clickedProp, newIcon, newColor);
-						this.plugin.refreshManagers('property');
-					});
-				} else {
-					IconPicker.openMulti(this.plugin, selectedProps, (newIcon, newColor) => {
-						this.plugin.savePropertyIcons(selectedProps, newIcon, newColor);
-						this.plugin.refreshManagers('property');
-					});
-				}
-			})
-		);
+		this.plugin.menuManager.addItemAfter(['action.changeType', 'action'], this.changeIconItem(items, () => {
+			this.plugin.openIconPicker(items,
+				(icon, color) => this.plugin.savePropertyIcon(clickedProp, icon, color),
+				(icon, color) => this.plugin.savePropertyIcons(selectedProps, icon, color),
+				'property');
+		}));
 
 		// Remove icon(s) / Reset color(s)
-		const anySelectedIcons = selectedProps.some(file => file.icon);
-		const anySelectedColors = selectedProps.some(file => file.color);
-		const removeTitle = selectedProps.length < 2
-			? clickedProp.icon
-				? STRINGS.menu.removeIcon
-				: STRINGS.menu.resetColor
-			: anySelectedIcons
-				? STRINGS.menu.removeIcons.replace('{#}', selectedProps.length.toString())
-				: STRINGS.menu.resetColors.replace('{#}', selectedProps.length.toString())
-		const removeIcon = clickedProp.icon || anySelectedIcons ? 'lucide-image-minus' : 'lucide-rotate-ccw';
-		if (clickedProp.icon || clickedProp.color || anySelectedIcons || anySelectedColors) {
-			this.plugin.menuManager.addItem(item => item
-				.setTitle(removeTitle)
-				.setIcon(removeIcon)
-				.setSection('icon')
-				.onClick(() => {
-					if (selectedProps.length < 2) {
-						this.plugin.savePropertyIcon(clickedProp, null, null);
-					} else {
-						this.plugin.savePropertyIcons(selectedProps, null, null);
-					}
-					this.plugin.refreshManagers('property');
-				})
-			);
+		if (items.some(prop => prop.icon || prop.color)) {
+			this.plugin.menuManager.addItem(this.removeIconItem(items, () => {
+				if (selectedProps.length < 2) {
+					this.plugin.savePropertyIcon(clickedProp, null, null);
+				} else {
+					this.plugin.savePropertyIcons(selectedProps, null, null);
+				}
+				this.plugin.refreshManagers('property');
+			}));
 		}
 	}
 

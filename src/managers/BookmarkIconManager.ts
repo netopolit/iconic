@@ -1,9 +1,8 @@
 import { WorkspaceLeaf } from 'obsidian';
-import IconicPlugin, { Category, BookmarkItem, STRINGS } from 'src/IconicPlugin';
+import IconicPlugin, { Category, BookmarkItem } from 'src/IconicPlugin';
 import { RuleItem } from 'src/managers/RuleManager';
 import IconManager from 'src/managers/IconManager';
 import RuleEditor from 'src/dialogs/RuleEditor';
-import IconPicker from 'src/dialogs/IconPicker';
 
 /**
  * Handles icons in the Bookmarks pane.
@@ -125,32 +124,16 @@ export default class BookmarkIconManager extends IconManager {
 			let iconEl = selfEl.find(':scope > .tree-item-icon') ?? selfEl.createDiv({ cls: 'tree-item-icon' });
 
 			if (bmark.items) {
-				// Toggle default icon based on expand/collapse state
-				if (bmark.iconDefault) bmark.iconDefault = iconEl.hasClass('is-collapsed')
-					? 'lucide-folder-closed'
-					: 'lucide-folder-open';
-				let folderIconEl = selfEl.find(':scope > .iconic-sidekick:not(.tree-item-icon)');
-				if (this.plugin.settings.minimalFolderIcons || !this.plugin.settings.showAllFolderIcons && !rule.icon && !rule.iconDefault) {
-					folderIconEl?.remove();
-				} else {
-					const arrowColor = rule.icon || rule.iconDefault ? null : rule.color;
-					this.refreshIcon({ icon: null, color: arrowColor }, iconEl);
-					folderIconEl = folderIconEl ?? selfEl.createDiv({ cls: 'iconic-sidekick' });
-					if (iconEl.nextElementSibling !== folderIconEl) {
-						iconEl.insertAdjacentElement('afterend', folderIconEl);
-					}
-					iconEl = folderIconEl;
-				}
+				iconEl = this.refreshFolderSidekick(bmark, rule, selfEl, iconEl);
 			}
 
 			if (iconEl.hasClass('collapse-icon') && !rule.icon && !rule.iconDefault) {
-				this.refreshIcon(bmark, iconEl); // Skip click listener if icon will be a collapse arrow
+				this.refreshIcon(rule, iconEl); // Skip click listener if icon will be a collapse arrow
 			} else if (this.plugin.isSettingEnabled('clickableIcons')) {
 				this.refreshIcon(rule, iconEl, event => {
-					IconPicker.openSingle(this.plugin, bmark, (newIcon, newColor) => {
-						this.plugin.saveBookmarkIcon(bmark, newIcon, newColor);
-						this.plugin.refreshManagers('file', 'folder');
-					});
+					this.plugin.openIconPicker([bmark],
+						(icon, color) => this.plugin.saveBookmarkIcon(bmark, icon, color),
+						null, 'file', 'folder');
 					event.stopPropagation();
 				});
 			} else {
@@ -161,8 +144,7 @@ export default class BookmarkIconManager extends IconManager {
 				this.selectionLookup.set(selfEl, bmark);
 				this.setEventListener(selfEl, 'touchstart', () => this.isTouchActive = true);
 
-				if (this.plugin.settings.showMenuActions) {
-					this.setEventListener(selfEl, 'contextmenu', () => {
+				this.setContextMenu(selfEl, () => {
 						// Mobile fires this event twice on bookmarks, so skip the mid-touch event
 						if (this.isTouchActive) {
 							this.isTouchActive = false;
@@ -170,9 +152,6 @@ export default class BookmarkIconManager extends IconManager {
 							this.onContextMenu(bmark.id, bmark.category);
 						}
 					}, { capture: true });
-				} else {
-					this.stopEventListener(selfEl, 'contextmenu');
-				}
 			}
 
 			// Update ghost icon when dragging
@@ -211,55 +190,27 @@ export default class BookmarkIconManager extends IconManager {
 			selectedBmarks.length = 0;
 		}
 
+		// Determine effective items list for menu title/action
+		const items = selectedBmarks.length < 2 ? [clickedBmark] : selectedBmarks;
+
 		// Change icon(s)
-		const changeTitle = selectedBmarks.length < 2
-			? STRINGS.menu.changeIcon
-			: STRINGS.menu.changeIcons.replace('{#}', selectedBmarks.length.toString());
-		this.plugin.menuManager.addItemAfter('open', item => item
-			.setTitle(changeTitle)
-			.setIcon('lucide-image-plus')
-			.setSection('icon')
-			.onClick(() => {
-				if (selectedBmarks.length < 2) {
-					IconPicker.openSingle(this.plugin, clickedBmark, (newIcon, newColor) => {
-						this.plugin.saveBookmarkIcon(clickedBmark, newIcon, newColor);
-						this.plugin.refreshManagers('file', 'folder');
-					});
-				} else {
-					IconPicker.openMulti(this.plugin, selectedBmarks, (newIcon, newColor) => {
-						this.plugin.saveBookmarkIcons(selectedBmarks, newIcon, newColor);
-						this.plugin.refreshManagers('file', 'folder');
-					});
-				}
-			})
-		);
+		this.plugin.menuManager.addItemAfter('open', this.changeIconItem(items, () => {
+			this.plugin.openIconPicker(items,
+				(icon, color) => this.plugin.saveBookmarkIcon(clickedBmark, icon, color),
+				(icon, color) => this.plugin.saveBookmarkIcons(selectedBmarks, icon, color),
+				'file', 'folder');
+		}));
 
 		// Remove icon(s) / Reset color(s)
-		const anyRemovable = selectedBmarks.some(bmark => bmark.icon || bmark.color);
-		const anyIcons = selectedBmarks.some(bmark => bmark.icon);
-		const removeTitle = selectedBmarks.length < 2
-			? clickedBmark.icon
-				? STRINGS.menu.removeIcon
-				: STRINGS.menu.resetColor
-			: anyIcons
-				? STRINGS.menu.removeIcons.replace('{#}', selectedBmarks.length.toString())
-				: STRINGS.menu.resetColors.replace('{#}', selectedBmarks.length.toString())
-		const removeIcon = clickedBmark.icon || anyIcons ? 'lucide-image-minus' : 'lucide-rotate-ccw';
-
-		if (clickedBmark.icon || clickedBmark.color || anyRemovable) {
-			this.plugin.menuManager.addItem(item => item
-				.setTitle(removeTitle)
-				.setIcon(removeIcon)
-				.setSection('icon')
-				.onClick(() => {
-					if (selectedBmarks.length < 2) {
-						this.plugin.saveBookmarkIcon(clickedBmark, null, null);
-					} else {
-						this.plugin.saveBookmarkIcons(selectedBmarks, null, null);
-					}
-					this.plugin.refreshManagers('file', 'folder');
-				})
-			);
+		if (items.some(bmark => bmark.icon || bmark.color)) {
+			this.plugin.menuManager.addItem(this.removeIconItem(items, () => {
+				if (selectedBmarks.length < 2) {
+					this.plugin.saveBookmarkIcon(clickedBmark, null, null);
+				} else {
+					this.plugin.saveBookmarkIcons(selectedBmarks, null, null);
+				}
+				this.plugin.refreshManagers('file', 'folder');
+			}));
 		}
 
 		// Edit rule
@@ -268,19 +219,14 @@ export default class BookmarkIconManager extends IconManager {
 				? this.plugin.ruleManager.checkRuling(clickedBmark.category, clickedBmark.id)
 				: null;
 			if (rule) {
-				this.plugin.menuManager.addItem(item => { item
-					.setTitle(STRINGS.menu.editRule)
-					.setIcon('lucide-image-play')
-					.setSection('icon')
-					.onClick(() => RuleEditor.open(this.plugin, 'file', rule, newRule => {
-						const isRulingChanged = newRule
-							? this.plugin.ruleManager.saveRule('file', newRule)
-							: this.plugin.ruleManager.deleteRule('file', rule.id);
-						if (isRulingChanged) {
-							this.plugin.refreshManagers('file');
-						}
-					}));
-				});
+				this.plugin.menuManager.addItem(this.editRuleItem(() => RuleEditor.open(this.plugin, 'file', rule, newRule => {
+					const isRulingChanged = newRule
+						? this.plugin.ruleManager.saveRule('file', newRule)
+						: this.plugin.ruleManager.deleteRule('file', rule.id);
+					if (isRulingChanged) {
+						this.plugin.refreshManagers('file');
+					}
+				})));
 			}
 		}
 	}

@@ -1,5 +1,5 @@
-import { App, setIcon } from 'obsidian';
-import IconicPlugin, { Item, Icon, ICONS, EMOJIS } from 'src/IconicPlugin';
+import { App, MenuItem, setIcon } from 'obsidian';
+import IconicPlugin, { Item, Icon, ICONS, EMOJIS, STRINGS } from 'src/IconicPlugin';
 import ColorUtils from 'src/ColorUtils';
 
 /**
@@ -208,6 +208,83 @@ export default abstract class IconManager {
 			observer.disconnect();
 			this.mutationObservers.delete(element);
 		}
+	}
+
+	/**
+	 * Returns a menu item callback for "Change icon" / "Change icons".
+	 */
+	protected changeIconItem(items: Item[], onClick: () => void): (menuItem: MenuItem) => void {
+		const title = items.length <= 1
+			? STRINGS.menu.changeIcon
+			: STRINGS.menu.changeIcons.replace('{#}', items.length.toString());
+		return menuItem => menuItem
+			.setTitle(title).setIcon('lucide-image-plus').setSection('icon').onClick(onClick);
+	}
+
+	/**
+	 * Returns a menu item callback for "Remove icon" / "Reset color".
+	 */
+	protected removeIconItem(items: Item[], onClick: () => void): (menuItem: MenuItem) => void {
+		const anyIcons = items.some(i => i.icon);
+		const title = items.length <= 1
+			? (anyIcons ? STRINGS.menu.removeIcon : STRINGS.menu.resetColor)
+			: (anyIcons
+				? STRINGS.menu.removeIcons.replace('{#}', items.length.toString())
+				: STRINGS.menu.resetColors.replace('{#}', items.length.toString()));
+		return menuItem => menuItem
+			.setTitle(title)
+			.setIcon(anyIcons ? 'lucide-image-minus' : 'lucide-rotate-ccw')
+			.setSection('icon').onClick(onClick);
+	}
+
+	/**
+	 * Returns a menu item callback for "Edit rule...".
+	 */
+	protected editRuleItem(onClick: () => void): (menuItem: MenuItem) => void {
+		return menuItem => { menuItem
+			.setTitle(STRINGS.menu.editRule).setIcon('lucide-image-play').setSection('icon').onClick(onClick);
+		};
+	}
+
+	/**
+	 * Set or remove a contextmenu listener based on the showMenuActions setting.
+	 */
+	protected setContextMenu(
+		el: HTMLElement, callback: (event: MouseEvent) => void, options?: AddEventListenerOptions
+	): void {
+		if (this.plugin.settings.showMenuActions) {
+			this.setEventListener(el, 'contextmenu', callback, options);
+		} else {
+			this.stopEventListener(el, 'contextmenu');
+		}
+	}
+
+	/**
+	 * Manage the sidekick icon for folders. Returns the effective iconEl to use for subsequent refreshIcon calls.
+	 */
+	protected refreshFolderSidekick(
+		item: Item, rule: Item | Icon, selfEl: HTMLElement, iconEl: HTMLElement
+	): HTMLElement {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		if ((item as any).items && item.iconDefault) {
+			item.iconDefault = iconEl.hasClass('is-collapsed')
+				? 'lucide-folder-closed' : 'lucide-folder-open';
+		}
+		let folderIconEl = selfEl.find(':scope > .iconic-sidekick:not(.tree-item-icon)');
+		if (this.plugin.settings.minimalFolderIcons
+			|| !this.plugin.settings.showAllFolderIcons
+				&& !rule.icon && !('iconDefault' in rule && rule.iconDefault)) {
+			folderIconEl?.remove();
+		} else {
+			const arrowColor = rule.icon || ('iconDefault' in rule && rule.iconDefault) ? null : rule.color;
+			this.refreshIcon({ icon: null, color: arrowColor }, iconEl);
+			folderIconEl = folderIconEl ?? selfEl.createDiv({ cls: 'iconic-sidekick' });
+			if (iconEl.nextElementSibling !== folderIconEl) {
+				iconEl.insertAdjacentElement('afterend', folderIconEl);
+			}
+			return folderIconEl;
+		}
+		return iconEl;
 	}
 
 	/**

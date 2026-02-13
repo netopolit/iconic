@@ -618,10 +618,9 @@ export default class IconicPlugin extends Plugin {
 				const file = this.getFileItem(tFile.path);
 				if (checking) return file !== null;
 
-				IconPicker.openSingle(this, file, (newIcon, newColor) => {
-					this.saveFileIcon(file, newIcon, newColor);
-					this.refreshManagers('file');
-				});
+				this.openIconPicker([file],
+					(icon, color) => this.saveFileIcon(file, icon, color),
+					null, 'file');
 			},
 		});
 
@@ -710,6 +709,28 @@ export default class IconicPlugin extends Plugin {
 
 		managers.delete(undefined);
 		for (const manager of managers) manager?.refreshIcons();
+	}
+
+	/**
+	 * Open the icon picker for single or multiple items, then save and refresh.
+	 */
+	openIconPicker(
+		items: Item[],
+		saveSingle: (icon: string | null, color: string | null) => void,
+		saveMulti: ((icon: string | null | undefined, color: string | null | undefined) => void) | null,
+		...categories: Category[]
+	): void {
+		if (items.length <= 1) {
+			IconPicker.openSingle(this, items[0], (newIcon, newColor) => {
+				saveSingle(newIcon, newColor);
+				this.refreshManagers(...categories);
+			});
+		} else if (saveMulti) {
+			IconPicker.openMulti(this, items, (newIcon, newColor) => {
+				saveMulti(newIcon, newColor);
+				this.refreshManagers(...categories);
+			});
+		}
 	}
 
 	/**

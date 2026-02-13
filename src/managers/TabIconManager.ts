@@ -1,8 +1,7 @@
 import { Platform } from 'obsidian';
-import IconicPlugin, { Category, FileItem, TabItem, STRINGS } from 'src/IconicPlugin';
+import IconicPlugin, { Category, FileItem, TabItem } from 'src/IconicPlugin';
 import IconManager from 'src/managers/IconManager';
 import RuleEditor from 'src/dialogs/RuleEditor';
-import IconPicker from 'src/dialogs/IconPicker';
 
 /**
  * Handles icons in workspace tab headers.
@@ -59,18 +58,16 @@ export default class TabIconManager extends IconManager {
 				if (tab.category === 'file') {
 					const file = this.plugin.getFileItem(tab.id);
 					this.refreshIcon(rule, iconEl, event => {
-						IconPicker.openSingle(this.plugin, file, (newIcon, newColor) => {
-							this.plugin.saveFileIcon(file, newIcon, newColor);
-							this.plugin.refreshManagers('file');
-						});
+						this.plugin.openIconPicker([file],
+							(icon, color) => this.plugin.saveFileIcon(file, icon, color),
+							null, 'file');
 						event.stopPropagation();
 					});
 				} else {
 					this.refreshIcon(rule, iconEl, event => {
-						IconPicker.openSingle(this.plugin, tab, (newIcon, newColor) => {
-							this.plugin.saveTabIcon(tab, newIcon, newColor);
-							this.plugin.refreshManagers('tab');
-						});
+						this.plugin.openIconPicker([tab],
+							(icon, color) => this.plugin.saveTabIcon(tab, icon, color),
+							null, 'tab');
 						event.stopPropagation();
 					});
 				}
@@ -175,27 +172,18 @@ export default class TabIconManager extends IconManager {
 		this.plugin.menuManager.flush();
 
 		// Change icon
-		this.plugin.menuManager.addItemAfter('close', item => item
-			.setTitle(STRINGS.menu.changeIcon)
-			.setIcon('lucide-image-plus')
-			.setSection('icon')
-			.onClick(() => IconPicker.openSingle(this.plugin, tab, (newIcon, newColor) => {
-				this.plugin.saveTabIcon(tab, newIcon, newColor);
-				this.plugin.refreshManagers('tab');
-			}))
-		);
+		this.plugin.menuManager.addItemAfter('close', this.changeIconItem([tab], () => {
+			this.plugin.openIconPicker([tab],
+				(icon, color) => this.plugin.saveTabIcon(tab, icon, color),
+				null, 'tab');
+		}));
 
 		// Remove icon / Reset color
 		if (tab.icon || tab.color) {
-			this.plugin.menuManager.addItem(item => item
-				.setTitle(tab.icon ? STRINGS.menu.removeIcon : STRINGS.menu.resetColor)
-				.setIcon(tab.icon ? 'lucide-image-minus' : 'lucide-rotate-ccw')
-				.setSection('icon')
-				.onClick(() => {
-					this.plugin.saveTabIcon(tab, null, null);
-					this.plugin.refreshManagers('tab');
-				})
-			);
+			this.plugin.menuManager.addItem(this.removeIconItem([tab], () => {
+				this.plugin.saveTabIcon(tab, null, null);
+				this.plugin.refreshManagers('tab');
+			}));
 		}
 	}
 
@@ -206,45 +194,31 @@ export default class TabIconManager extends IconManager {
 		this.plugin.menuManager.flush();
 
 		// Change icon
-		this.plugin.menuManager.addItemAfter('close', item => item
-			.setTitle(STRINGS.menu.changeIcon)
-			.setIcon('lucide-image-plus')
-			.setSection('icon')
-			.onClick(() => IconPicker.openSingle(this.plugin, file, (newIcon, newColor) => {
-				this.plugin.saveFileIcon(file, newIcon, newColor);
-				this.plugin.refreshManagers('file');
-			}))
-		);
+		this.plugin.menuManager.addItemAfter('close', this.changeIconItem([file], () => {
+			this.plugin.openIconPicker([file],
+				(icon, color) => this.plugin.saveFileIcon(file, icon, color),
+				null, 'file');
+		}));
 
 		// Remove icon / Reset color
 		if (file.icon || file.color) {
-			this.plugin.menuManager.addItem(item => item
-				.setTitle(file.icon ? STRINGS.menu.removeIcon : STRINGS.menu.resetColor)
-				.setIcon(file.icon ? 'lucide-image-minus' : 'lucide-rotate-ccw')
-				.setSection('icon')
-				.onClick(() => {
-					this.plugin.saveFileIcon(file, null, null);
-					this.plugin.refreshManagers('file');
-				})
-			);
+			this.plugin.menuManager.addItem(this.removeIconItem([file], () => {
+				this.plugin.saveFileIcon(file, null, null);
+				this.plugin.refreshManagers('file');
+			}));
 		}
 
 		// Edit rule
 		const rule = this.plugin.ruleManager.checkRuling('file', file.id);
 		if (rule) {
-			this.plugin.menuManager.addItem(item => { item
-				.setTitle(STRINGS.menu.editRule)
-				.setIcon('lucide-image-play')
-				.setSection('icon')
-				.onClick(() => RuleEditor.open(this.plugin, 'file', rule, newRule => {
-					const isRulingChanged = newRule
-						? this.plugin.ruleManager.saveRule('file', newRule)
-						: this.plugin.ruleManager.deleteRule('file', rule.id);
-					if (isRulingChanged) {
-						this.plugin.refreshManagers('file');
-					}
-				}));
-			});
+			this.plugin.menuManager.addItem(this.editRuleItem(() => RuleEditor.open(this.plugin, 'file', rule, newRule => {
+				const isRulingChanged = newRule
+					? this.plugin.ruleManager.saveRule('file', newRule)
+					: this.plugin.ruleManager.deleteRule('file', rule.id);
+				if (isRulingChanged) {
+					this.plugin.refreshManagers('file');
+				}
+			})));
 		}
 	}
 

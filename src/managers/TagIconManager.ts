@@ -1,7 +1,6 @@
 import { Menu, WorkspaceLeaf } from 'obsidian';
-import IconicPlugin, { TagItem, STRINGS } from 'src/IconicPlugin';
+import IconicPlugin, { TagItem } from 'src/IconicPlugin';
 import IconManager from 'src/managers/IconManager';
-import IconPicker from 'src/dialogs/IconPicker';
 
 /**
  * Handles icons in the Tags pane.
@@ -80,23 +79,18 @@ export default class TagIconManager extends IconManager {
 				this.refreshIcon(tag, iconEl); // Skip click listener if icon will be a collapse arrow
 			} else if (this.plugin.isSettingEnabled('clickableIcons')) {
 				this.refreshIcon(tag, iconEl, event => {
-					IconPicker.openSingle(this.plugin, tag, (newIcon, newColor) => {
-						this.plugin.saveTagIcon(tag, newIcon, newColor);
-						this.plugin.refreshManagers('tag');
-					});
+					this.plugin.openIconPicker([tag],
+						(icon, color) => this.plugin.saveTagIcon(tag, icon, color),
+						null, 'tag');
 					event.stopPropagation();
 				});
 			} else {
 				this.refreshIcon(tag, iconEl);
 			}
 
-			if (this.plugin.settings.showMenuActions && selfEl) {
-				this.setEventListener(selfEl, 'contextmenu', event => {
-					this.onContextMenu(tag.id, event);
-				});
-			} else {
-				this.stopEventListener(selfEl, 'contextmenu');
-			}
+			this.setContextMenu(selfEl, event => {
+				this.onContextMenu(tag.id, event);
+			});
 		}
 	}
 
@@ -115,27 +109,18 @@ export default class TagIconManager extends IconManager {
 			: new Menu();
 
 		// Change icon
-		menu.addItem(menuItem => menuItem
-			.setTitle(STRINGS.menu.changeIcon)
-			.setIcon('lucide-image-plus')
-			.setSection('icon')
-			.onClick(() => IconPicker.openSingle(this.plugin, tag, (newIcon, newColor) => {
-				this.plugin.saveTagIcon(tag, newIcon, newColor);
-				this.plugin.refreshManagers('tag');
-			}))
-		);
+		menu.addItem(this.changeIconItem([tag], () => {
+			this.plugin.openIconPicker([tag],
+				(icon, color) => this.plugin.saveTagIcon(tag, icon, color),
+				null, 'tag');
+		}));
 
 		// Remove icon / Reset color
 		if (tag.icon || tag.color) {
-			menu.addItem(menuItem => menuItem
-				.setTitle(tag.icon ? STRINGS.menu.removeIcon : STRINGS.menu.resetColor)
-				.setIcon(tag.icon ? 'lucide-image-minus' : 'lucide-rotate-ccw')
-				.setSection('icon')
-				.onClick(() => {
-					this.plugin.saveTagIcon(tag, null, null);
-					this.plugin.refreshManagers('tag');
-				})
-			);
+			menu.addItem(this.removeIconItem([tag], () => {
+				this.plugin.saveTagIcon(tag, null, null);
+				this.plugin.refreshManagers('tag');
+			}));
 		}
 
 		if (menu instanceof Menu) {
