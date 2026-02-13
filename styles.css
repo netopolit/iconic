@@ -686,6 +686,7 @@ body[data-theme="Ukiyo"] .workspace-leaf > .workspace-leaf-content[data-type="fi
 	overflow-x: hidden;
 	overflow-y: auto;
 	max-height: 300px;
+	align-items: flex-start;
 }
 .iconic-search-results.iconic-browse-mode > .setting-item-control {
 	flex-wrap: wrap;
