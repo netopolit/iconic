@@ -20,5 +20,8 @@ data.json
 data.json.backup*
 icons/
 
+# deploy
+deploy.sh
+
 # Exclude macOS Finder (System Explorer) View States
 .DS_Store
