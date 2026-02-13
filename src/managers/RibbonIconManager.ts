@@ -135,8 +135,11 @@ export default class RibbonIconManager extends IconManager {
 		if (iconEls.length === 0) return;
 
 		const ribbonItems = this.plugin.getRibbonItems();
-		const visibleItems = ribbonItems.filter(item => !item.isHidden);
-		const hiddenItems = ribbonItems.filter(item => item.isHidden);
+		const visibleItems: RibbonItem[] = [];
+		const hiddenItems: RibbonItem[] = [];
+		for (const item of ribbonItems) {
+			(item.isHidden ? hiddenItems : visibleItems).push(item);
+		}
 		const visibleEls = containerEl.findAll('.mobile-option-setting-item:has(.mobile-option-setting-item-remove-icon)');
 		const hiddenEls = containerEl.findAll('.mobile-option-setting-item:has(.mobile-option-setting-item-add-icon)');
 

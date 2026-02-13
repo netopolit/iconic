@@ -6,6 +6,7 @@ import { DialogIconManager } from 'src/managers/IconManager';
 import RuleEditor from 'src/dialogs/RuleEditor';
 
 const COLOR_KEYS = [...COLORS.keys()];
+const COLOR_KEY_SET = new Set(COLOR_KEYS);
 
 /**
  * Callback for setting icon & color of a single item.
@@ -538,7 +539,7 @@ export default class IconPicker extends Modal {
 	 */
 	private previousColor(): void {
 		let index = COLOR_KEYS.length - 1;
-		if (this.color && COLOR_KEYS.includes(this.color) && this.color !== COLOR_KEYS.first()) {
+		if (this.color && COLOR_KEY_SET.has(this.color) && this.color !== COLOR_KEYS.first()) {
 			index = COLOR_KEYS.indexOf(this.color) - 1;
 		}
 		this.color = COLOR_KEYS[index];
@@ -553,7 +554,7 @@ export default class IconPicker extends Modal {
 	 */
 	private nextColor(): void {
 		let index = 0;
-		if (this.color && COLOR_KEYS.includes(this.color) && this.color !== COLOR_KEYS.last()) {
+		if (this.color && COLOR_KEY_SET.has(this.color) && this.color !== COLOR_KEYS.last()) {
 			index = COLOR_KEYS.indexOf(this.color) + 1;
 		}
 		this.color = COLOR_KEYS[index];
@@ -665,7 +666,7 @@ export default class IconPicker extends Modal {
 		// Set tooltip message
 		let tooltip = STRINGS.iconPicker.changeColor;
 		if (this.color) {
-			if (COLOR_KEYS.includes(this.color)) {
+			if (COLOR_KEY_SET.has(this.color)) {
 				tooltip = STRINGS.iconPicker.colors[this.color as keyof typeof STRINGS.iconPicker.colors];
 			} else {
 				tooltip = this.color;

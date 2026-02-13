@@ -10,7 +10,7 @@ import RuleNameSuggest from 'src/components/RuleNameSuggest';
 
 export type OperatorValueType = 'text' | 'regex' | 'number' | 'datetime' | 'date' | 'time' | 'weekday' | 'month' | 'color' | 'hex';
 
-const FILE_SOURCES = [
+const FILE_SOURCES: ReadonlySet<string> = new Set([
 	'icon',
 	'color',
 	'name',
@@ -26,9 +26,9 @@ const FILE_SOURCES = [
 	'modified',
 	'clock',
 	'properties',
-];
+]);
 
-const FOLDER_SOURCES = [
+const FOLDER_SOURCES: ReadonlySet<string> = new Set([
 	'icon',
 	'color',
 	'name',
@@ -37,9 +37,9 @@ const FOLDER_SOURCES = [
 	'created',
 	'modified',
 	'clock',
-];
+]);
 
-const TEXT_OPERATORS = [
+const TEXT_OPERATORS: ReadonlySet<string> = new Set([
 	'is',
 	'!is',
 	'contains',
@@ -50,9 +50,9 @@ const TEXT_OPERATORS = [
 	'!startsWith',
 	'!endsWith',
 	'!matches',
-];
+]);
 
-const LIST_OPERATORS = [
+const LIST_OPERATORS: ReadonlySet<string> = new Set([
 	'includes',
 	'!includes',
 	'allAre',
@@ -72,9 +72,9 @@ const LIST_OPERATORS = [
 	'!countIs',
 	'countIsLess',
 	'countIsMore',
-];
+]);
 
-const NUMBER_OPERATORS = [
+const NUMBER_OPERATORS: ReadonlySet<string> = new Set([
 	'equals',
 	'!equals',
 	'isLess',
@@ -83,16 +83,16 @@ const NUMBER_OPERATORS = [
 	'!isLess',
 	'!isMore',
 	'!isDivisible',
-];
+]);
 
-const BOOLEAN_OPERATORS = [
+const BOOLEAN_OPERATORS: ReadonlySet<string> = new Set([
 	'isTrue',
 	'!isTrue',
 	'isFalse',
 	'!isFalse',
-];
+]);
 
-const DATETIME_OPERATORS = [
+const DATETIME_OPERATORS: ReadonlySet<string> = new Set([
 	'datetimeIs',
 	'!datetimeIs',
 	'datetimeIsBefore',
@@ -137,9 +137,9 @@ const DATETIME_OPERATORS = [
 	'!yearIs',
 	'yearIsBefore',
 	'yearIsAfter',
-];
+]);
 
-const DATE_OPERATORS = [
+const DATE_OPERATORS: ReadonlySet<string> = new Set([
 	'dateIs',
 	'!dateIs',
 	'dateIsBefore',
@@ -168,9 +168,9 @@ const DATE_OPERATORS = [
 	'!yearIs',
 	'yearIsBefore',
 	'yearIsAfter',
-];
+]);
 
-const PAST_OPERATORS = [
+const PAST_OPERATORS: ReadonlySet<string> = new Set([
 	'datetimeIs',
 	'!datetimeIs',
 	'datetimeIsBefore',
@@ -207,9 +207,9 @@ const PAST_OPERATORS = [
 	'!yearIs',
 	'yearIsBefore',
 	'yearIsAfter',
-];
+]);
 
-const PRESENT_OPERATORS = [
+const PRESENT_OPERATORS: ReadonlySet<string> = new Set([
 	'datetimeIs',
 	'!datetimeIs',
 	'datetimeIsBefore',
@@ -238,9 +238,9 @@ const PRESENT_OPERATORS = [
 	'!yearIs',
 	'yearIsBefore',
 	'yearIsAfter',
-];
+]);
 
-const ICON_OPERATORS = [
+const ICON_OPERATORS: ReadonlySet<string> = new Set([
 	'iconIs',
 	'!iconIs',
 	'nameIs',
@@ -253,21 +253,21 @@ const ICON_OPERATORS = [
 	'!nameStartsWith',
 	'!nameEndsWith',
 	'!nameMatches',
-];
+]);
 
-const COLOR_OPERATORS = [
+const COLOR_OPERATORS: ReadonlySet<string> = new Set([
 	'colorIs',
 	'!colorIs',
 	'hexIs',
 	'!hexIs',
-];
+]);
 
-const VALUE_OPERATORS = [
+const VALUE_OPERATORS: ReadonlySet<string> = new Set([
 	'hasValue',
 	'!hasValue',
-];
+]);
 
-const WEEKDAY_VALUES = [
+const WEEKDAY_VALUES: ReadonlySet<number> = new Set([
 	1,
 	2,
 	3,
@@ -275,9 +275,9 @@ const WEEKDAY_VALUES = [
 	5,
 	6,
 	7,
-];
+]);
 
-const MONTH_VALUES = [
+const MONTH_VALUES: ReadonlySet<number> = new Set([
 	1,
 	2,
 	3,
@@ -290,9 +290,9 @@ const MONTH_VALUES = [
 	10,
 	11,
 	12,
-];
+]);
 
-const COLOR_VALUES = [
+const COLOR_VALUES: ReadonlySet<string> = new Set([
 	'red',
 	'orange',
 	'yellow',
@@ -301,12 +301,12 @@ const COLOR_VALUES = [
 	'blue',
 	'purple',
 	'pink',
-	'gray'
-];
+	'gray',
+]);
 
-const SOURCE_OPERATORS: Record<string, string[]> = {
-	icon: [...ICON_OPERATORS, ...VALUE_OPERATORS],
-	color: [...COLOR_OPERATORS, ...VALUE_OPERATORS],
+const SOURCE_OPERATORS: Record<string, ReadonlySet<string>> = {
+	icon: new Set([...ICON_OPERATORS, ...VALUE_OPERATORS]),
+	color: new Set([...COLOR_OPERATORS, ...VALUE_OPERATORS]),
 	name: TEXT_OPERATORS,
 	filename: TEXT_OPERATORS,
 	extension: TEXT_OPERATORS,
@@ -663,7 +663,7 @@ export default class RuleEditor extends Modal {
 			}
 		} else {
 			// Get sources based on rule page
-			let sources: string[] = [];
+			let sources: ReadonlySet<string> = new Set();
 			switch (this.page) {
 				case 'file': sources = FILE_SOURCES; break;
 				case 'folder': sources = FOLDER_SOURCES; break;
@@ -675,11 +675,12 @@ export default class RuleEditor extends Modal {
 				setting.srcDropdown.addOption(source, label);
 			}
 			// Preserve the selected source if possible
-			if (sources.includes(setting.condition.source)) {
+			if (sources.has(setting.condition.source)) {
 				setting.srcDropdown.setValue(setting.condition.source);
 			} else {
-				setting.condition.source = sources[0];
-				setting.srcDropdown.setValue(sources[0]);
+				const first = sources.values().next().value!;
+				setting.condition.source = first;
+				setting.srcDropdown.setValue(first);
 			}
 		}
 	}
@@ -692,7 +693,7 @@ export default class RuleEditor extends Modal {
 		setting.condition.operator = operator;
 
 		// Determine the operators
-		let operators: string[] = [];
+		let operators: ReadonlySet<string> = new Set();
 		if (setting.condition.source.startsWith('property:')) {
 			const propId = setting.condition.source.replace('property:', '');
 			const prop = this.plugin.getPropertyItem(propId);
@@ -718,11 +719,12 @@ export default class RuleEditor extends Modal {
 		}
 
 		// Preserve the selected operator if possible
-		if (operators.includes(setting.condition.operator)) {
+		if (operators.has(setting.condition.operator)) {
 			setting.opDropdown.setValue(setting.condition.operator);
 		} else {
-			setting.condition.operator = operators[0];
-			setting.opDropdown.setValue(operators[0]);
+			const first = operators.values().next().value!;
+			setting.condition.operator = first;
+			setting.opDropdown.setValue(first);
 		}
 
 		// If value type has changed, empty the condition value
@@ -743,7 +745,7 @@ export default class RuleEditor extends Modal {
 		// Decide how to display the value
 		let inputType: string | null = null;
 		let inputPlaceholder: string = '';
-		let dropdownValues: (string | number)[] | null = null;
+		let dropdownValues: ReadonlySet<string | number> | null = null;
 		let dropdownLabels: Record<(string | number), string> | null = null;
 		switch (valueType) {
 			case 'text': {
@@ -819,7 +821,7 @@ export default class RuleEditor extends Modal {
 				const label = dropdownLabels[value as keyof typeof dropdownLabels];
 				setting.valDropdown.addOption(value.toString(), label);
 			}
-			if (dropdownValues.includes(setting.condition.value)) {
+			if (dropdownValues.has(setting.condition.value)) {
 				setting.valDropdown.setValue(setting.condition.value);
 			}
 			// Insert element if not present
@@ -828,11 +830,12 @@ export default class RuleEditor extends Modal {
 			}
 
 			// Preserve the selected value if possible
-			if (dropdownValues.includes(setting.condition.value)) {
+			if (dropdownValues.has(setting.condition.value)) {
 				setting.valDropdown.setValue(setting.condition.value);
 			} else {
-				setting.condition.value = dropdownValues[0].toString();
-				setting.valDropdown.setValue(dropdownValues[0].toString());
+				const first = dropdownValues.values().next().value!.toString();
+				setting.condition.value = first;
+				setting.valDropdown.setValue(first);
 			}
 		} else {
 			// Remove element
