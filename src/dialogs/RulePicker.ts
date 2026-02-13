@@ -185,13 +185,8 @@ export default class RulePicker extends Modal {
 			ruleSetting.ghostRuleEl.appendChild(settingEl.cloneNode(true));
 			// Display drop zone effect
 			settingEl.addClass('drag-ghost-hidden');
-			// Hack to hide the browser-native drag ghost
-			settingEl.style.opacity = '0%';
-			activeWindow.requestAnimationFrame(() => settingEl.style.removeProperty('opacity'));
 		})
 		.onDrag((x, y) => {
-			// Ignore initial (0, 0) event
-			if (x === 0 && y === 0) return;
 			// Get bounding rectangles
 			const settingRect = settingEl.getBoundingClientRect();
 			const gripRect = gripEl.getBoundingClientRect();
@@ -221,7 +216,6 @@ export default class RulePicker extends Modal {
 			ruleSetting.ghostRuleEl?.remove();
 			ruleSetting.ghostRuleEl = null;
 			settingEl.removeClass('drag-ghost-hidden');
-			settingEl.removeAttribute('draggable');
 			// Save rule position
 			const toIndex = this.scrollerEl.indexOf(settingEl);
 			if (toIndex > -1) {

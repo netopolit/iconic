@@ -891,17 +891,10 @@ export default class RuleEditor extends Modal {
 
 		// Show drop zone effect
 		settingEl.addClass('drag-ghost-hidden');
-
-		// Hack to hide the browser-native drag ghost
-		settingEl.style.opacity = '0%';
-		settingEl.win.requestAnimationFrame(() => settingEl.style.removeProperty('opacity'));
 	}
 
 	private onDrag(setting: ConditionSetting, x: number, y: number): void {
 		const { settingEl, gripEl } = setting;
-
-		// Ignore initial (0, 0) event
-		if (x === 0 && y === 0) return;
 
 		// Get bounding rectangles
 		const settingRect = settingEl.getBoundingClientRect();
@@ -940,7 +933,6 @@ export default class RuleEditor extends Modal {
 		setting.ghostEl?.remove()
 		setting.ghostEl = null;
 		setting.settingEl.removeClass('drag-ghost-hidden');
-		setting.settingEl.removeAttribute('draggable');
 
 		// Save condition position
 		const toIndex = this.scrollerEl.indexOf(setting.settingEl);
