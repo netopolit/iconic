@@ -22,6 +22,8 @@ icons/
 
 # deploy
 deploy.sh
+seed.sh
+vaults.sh
 
 # Exclude macOS Finder (System Explorer) View States
 .DS_Store

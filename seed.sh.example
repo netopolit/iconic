@@ -1,13 +1,13 @@
 #!/bin/bash
-# Deploy built plugin to multiple Obsidian vaults
+# Seed data.json (settings + rules) to multiple Obsidian vaults
 #
 # Setup:
-#   1. Copy this file: cp deploy.sh.example deploy.sh
+#   1. Copy this file: cp seed.sh.example seed.sh
 #   2. Configure vaults: cp vaults.sh.example vaults.sh (if not done already)
 #   3. Edit vaults.sh: set VAULTS_BASE and add vault names to VAULTS array
-#   4. Run: npm run deploy
+#   4. Run: npm run seed
 #
-# Note: deploy.sh and vaults.sh are gitignored to keep your paths private
+# Note: seed.sh and vaults.sh are gitignored to keep your paths private
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/vaults.sh" 2>/dev/null || { echo "Missing vaults.sh. Run: cp vaults.sh.example vaults.sh"; exit 1; }
@@ -32,7 +32,7 @@ draw_menu() {
   printf '\e[2K\e[2m↑↓ move · space toggle · a all · n none · enter confirm\e[0m\n'
 }
 
-printf 'Select vaults to deploy:\n'
+printf 'Select vaults to seed:\n'
 draw_menu
 while true; do
   IFS= read -rsn1 key
@@ -63,9 +63,8 @@ fi
 for vault in "${selected[@]}"; do
   dest="$VAULTS_BASE/$vault/$PLUGIN_PATH"
   mkdir -p "$dest"
-  cp main.js manifest.json "$dest/"
-  [ -f styles.css ] && cp styles.css "$dest/"
-  echo "Deployed to: $dest"
+  cp seeds/data.json "$dest/data.json"
+  echo "Seeded: $dest/data.json"
 done
 
-echo "Done! Deployed to ${#selected[@]} vault(s)."
+echo "Done! Seeded ${#selected[@]} vault(s)."
