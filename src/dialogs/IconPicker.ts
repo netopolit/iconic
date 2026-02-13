@@ -1,8 +1,8 @@
-import { ButtonComponent, ColorComponent, ExtraButtonComponent, Hotkey, Menu, Modal, Platform, Setting, TextComponent, displayTooltip, prepareFuzzySearch, setTooltip } from 'obsidian';
-import IconicPlugin, { Category, Item, Icon, ICONS, EMOJIS, STRINGS } from 'src/IconicPlugin';
+import { ButtonComponent, ColorComponent, ExtraButtonComponent, Menu, Modal, Platform, Setting, TextComponent, displayTooltip, prepareFuzzySearch, setTooltip } from 'obsidian';
+import IconicPlugin, { Category, Item, ICONS, EMOJIS, STRINGS } from 'src/IconicPlugin';
 import ColorUtils, { COLORS } from 'src/ColorUtils';
 import { RuleItem } from 'src/managers/RuleManager';
-import IconManager from 'src/managers/IconManager';
+import { DialogIconManager } from 'src/managers/IconManager';
 import RuleEditor from 'src/dialogs/RuleEditor';
 
 const COLOR_KEYS = [...COLORS.keys()];
@@ -22,55 +22,11 @@ export interface MultiIconPickerCallback {
 }
 
 /**
- * Exposes private methods as public for use by {@link IconPicker}.
- */
-class IconPickerManager extends IconManager {
-	constructor(plugin: IconicPlugin) {
-		super(plugin);
-	}
-
-	/**
-	 * @override
-	 */
-	refreshIcon(item: Item | Icon, iconEl: HTMLElement, onClick?: ((event: MouseEvent) => void)): void {
-		super.refreshIcon(item, iconEl, onClick);
-	}
-
-	/**
-	 * @override
-	 */
-	setEventListener<K extends keyof HTMLElementEventMap>(element: HTMLElement, type: K, listener: (this: HTMLElement, event: HTMLElementEventMap[K]) => void, options?: boolean | AddEventListenerOptions): void {
-		super.setEventListener(element, type, listener, options);
-	}
-
-	/**
-	 * @override
-	 */
-	stopEventListeners(): void {
-		super.stopEventListeners();
-	}
-
-	/**
-	 * @override
-	 */
-	setMutationObserver(element: HTMLElement | null, options: MutationObserverInit, callback: (mutation: MutationRecord) => void): void {
-		super.setMutationObserver(element, options, callback);
-	}
-
-	/**
-	 * @override
-	 */
-	stopMutationObservers(): void {
-		super.stopMutationObservers();
-	}
-}
-
-/**
  * Dialog for changing icons & colors of single/multiple items.
  */
 export default class IconPicker extends Modal {
 	private readonly plugin: IconicPlugin;
-	private readonly iconManager: IconPickerManager;
+	private readonly iconManager: DialogIconManager;
 
 	// Item
 	private readonly items: Item[];
@@ -109,7 +65,7 @@ export default class IconPicker extends Modal {
 	) {
 		super(plugin.app);
 		this.plugin = plugin;
-		this.iconManager = new IconPickerManager(plugin);
+		this.iconManager = new DialogIconManager(plugin);
 		this.items = items;
 		this.icon = this.items.every(item => item.icon === this.items[0].icon) ? this.items[0].icon : undefined;
 		this.color = this.items.every(item => item.color === this.items[0].color) ? this.items[0].color : undefined;
@@ -117,13 +73,7 @@ export default class IconPicker extends Modal {
 		this.multiCallback = multiCallback;
 
 		// Allow hotkeys in dialog
-		for (const command of this.plugin.dialogCommands) if (command.callback) {
-			// @ts-expect-error (Private API)
-			const hotkeys: Hotkey[] = this.app.hotkeyManager?.customKeys?.[command.id] ?? [];
-			for (const hotkey of hotkeys) {
-				this.scope.register(hotkey.modifiers, hotkey.key, command.callback);
-			}
-		}
+		this.plugin.registerDialogHotkeys(this.scope);
 
 		// Navigation hotkeys
 		this.scope.register(null, 'ArrowUp', event => this.nudgeFocus(event));
@@ -992,6 +942,21 @@ export default class IconPicker extends Modal {
 			const iconEl = titleEl.createDiv({ cls: 'callout-icon' });
 			const innerEl = titleEl.createDiv({ cls: 'callout-title-inner' });
 
+			const openRuleEditor = (linkEl: HTMLElement) => {
+				this.iconManager.setEventListener(linkEl, 'click', () => {
+					if (page && rule) RuleEditor.open(this.plugin, page, rule, newRule => {
+						if (!rule) return;
+						const isRulingChanged = newRule
+							? this.plugin.ruleManager.saveRule(page, newRule)
+							: this.plugin.ruleManager.deleteRule(page, rule.id);
+						if (isRulingChanged) {
+							this.plugin.refreshManagers(page);
+						}
+						this.updateOverruleReminder();
+					});
+				});
+			};
+
 			// Populate callout message
 			if (this.items.length > 1) {
 				this.iconManager.refreshIcon({ icon: 'lucide-book-image', color: 'gray' }, iconEl);
@@ -1001,35 +966,13 @@ export default class IconPicker extends Modal {
 				innerEl.setText(STRINGS.iconPicker.overridePrefix);
 				const linkEl = innerEl.createEl('a', { text: rule.name });
 				innerEl.appendText(STRINGS.iconPicker.overrideSuffix);
-				this.iconManager.setEventListener(linkEl, 'click', () => {
-					if (page && rule) RuleEditor.open(this.plugin, page, rule, newRule => {
-						if (!rule) return;
-						const isRulingChanged = newRule
-							? this.plugin.ruleManager.saveRule(page, newRule)
-							: this.plugin.ruleManager.deleteRule(page, rule.id);
-						if (isRulingChanged) {
-							this.plugin.refreshManagers(page);
-						}
-						this.updateOverruleReminder();
-					});
-				});
+				openRuleEditor(linkEl);
 			} else {
 				this.iconManager.refreshIcon(rule, iconEl);
 				innerEl.setText(STRINGS.iconPicker.overrulePrefix);
 				const linkEl = innerEl.createEl('a', { text: rule.name });
 				innerEl.appendText(STRINGS.iconPicker.overruleSuffix);
-				this.iconManager.setEventListener(linkEl, 'click', () => {
-					if (page && rule) RuleEditor.open(this.plugin, page, rule, newRule => {
-						if (!rule) return;
-						const isRulingChanged = newRule
-							? this.plugin.ruleManager.saveRule(page, newRule)
-							: this.plugin.ruleManager.deleteRule(page, rule.id);
-						if (isRulingChanged) {
-							this.plugin.refreshManagers(page);
-						}
-						this.updateOverruleReminder();
-					});
-				});
+				openRuleEditor(linkEl);
 			}
 			this.contentEl.prepend(this.overruleEl);
 		}

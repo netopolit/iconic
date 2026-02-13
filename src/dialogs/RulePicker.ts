@@ -1,58 +1,14 @@
 import { Modal, Setting } from 'obsidian';
-import IconicPlugin, { Category, Icon, Item, STRINGS } from 'src/IconicPlugin';
+import IconicPlugin, { Category, STRINGS } from 'src/IconicPlugin';
 import { RuleItem } from 'src/managers/RuleManager';
-import IconManager from 'src/managers/IconManager';
+import { DialogIconManager } from 'src/managers/IconManager';
 import IconPicker from 'src/dialogs/IconPicker';
 import RuleEditor from 'src/dialogs/RuleEditor';
 import RuleSetting from 'src/components/RuleSetting';
 
-/**
- * Exposes private methods as public for use by {@link RulePicker}.
- */
-export class RulePickerManager extends IconManager {
-	constructor(plugin: IconicPlugin) {
-		super(plugin);
-	}
-
-	/**
-	 * @override
-	 */
-	refreshIcon(item: Item | Icon, iconEl: HTMLElement, onClick?: ((event: MouseEvent) => void)): void {
-		super.refreshIcon(item, iconEl, onClick);
-	}
-
-	/**
-	 * @override
-	 */
-	setEventListener<K extends keyof HTMLElementEventMap>(element: HTMLElement, type: K, listener: (this: HTMLElement, event: HTMLElementEventMap[K]) => void, options?: boolean | AddEventListenerOptions): void {
-		super.setEventListener(element, type, listener, options);
-	}
-
-	/**
-	 * @override
-	 */
-	stopEventListeners(): void {
-		super.stopEventListeners();
-	}
-
-	/**
-	 * @override
-	 */
-	setMutationObserver(element: HTMLElement | null, options: MutationObserverInit, callback: (mutation: MutationRecord) => void): void {
-		super.setMutationObserver(element, options, callback);
-	}
-
-	/**
-	 * @override
-	 */
-	stopMutationObservers(): void {
-		super.stopMutationObservers();
-	}
-}
-
 export default class RulePicker extends Modal {
 	private readonly plugin: IconicPlugin;
-	private readonly iconManager: RulePickerManager;
+	private readonly iconManager: DialogIconManager;
 
 	// Components
 	private scrollerEl: HTMLElement;
@@ -60,16 +16,10 @@ export default class RulePicker extends Modal {
 	private constructor(plugin: IconicPlugin) {
 		super(plugin.app);
 		this.plugin = plugin;
-		this.iconManager = new RulePickerManager(plugin);
+		this.iconManager = new DialogIconManager(plugin);
 
 		// Allow hotkeys in dialog
-		for (const command of this.plugin.dialogCommands) if (command.callback) {
-			// @ts-expect-error (Private API)
-			const hotkeys: Hotkey[] = this.app.hotkeyManager?.customKeys?.[command.id] ?? [];
-			for (const hotkey of hotkeys) {
-				this.scope.register(hotkey.modifiers, hotkey.key, command.callback);
-			}
-		}
+		this.plugin.registerDialogHotkeys(this.scope);
 	}
 
 	static open(plugin: IconicPlugin): void {

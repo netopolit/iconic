@@ -1,7 +1,7 @@
 import { ButtonComponent, Modal, Platform, Setting, TextComponent } from 'obsidian';
-import IconicPlugin, { Category, Icon, Item, FileItem, STRINGS } from 'src/IconicPlugin';
+import IconicPlugin, { Category, FileItem, STRINGS } from 'src/IconicPlugin';
 import { RuleItem, ConditionItem } from 'src/managers/RuleManager';
-import IconManager from 'src/managers/IconManager';
+import { DialogIconManager } from 'src/managers/IconManager';
 import RuleChecker from 'src/dialogs/RuleChecker';
 import IconPicker from 'src/dialogs/IconPicker';
 import ConditionSetting from 'src/components/ConditionSetting';
@@ -417,55 +417,11 @@ export interface RuleEditorCallback {
 }
 
 /**
- * Exposes private methods as public for use by {@link RuleEditor}.
- */
-class RuleEditorManager extends IconManager {
-	constructor(plugin: IconicPlugin) {
-		super(plugin);
-	}
-
-	/**
-	 * @override
-	 */
-	refreshIcon(item: Item | Icon, iconEl: HTMLElement, onClick?: ((event: MouseEvent) => void)): void {
-		super.refreshIcon(item, iconEl, onClick);
-	}
-
-	/**
-	 * @override
-	 */
-	setEventListener<K extends keyof HTMLElementEventMap>(element: HTMLElement, type: K, listener: (this: HTMLElement, event: HTMLElementEventMap[K]) => void, options?: boolean | AddEventListenerOptions): void {
-		super.setEventListener(element, type, listener, options);
-	}
-
-	/**
-	 * @override
-	 */
-	stopEventListeners(): void {
-		super.stopEventListeners();
-	}
-
-	/**
-	 * @override
-	 */
-	setMutationObserver(element: HTMLElement | null, options: MutationObserverInit, callback: (mutation: MutationRecord) => void): void {
-		super.setMutationObserver(element, options, callback);
-	}
-
-	/**
-	 * @override
-	 */
-	stopMutationObservers(): void {
-		super.stopMutationObservers();
-	}
-}
-
-/**
  * Dialog for adding and modifying rule definitions.
  */
 export default class RuleEditor extends Modal {
 	private readonly plugin: IconicPlugin;
-	private readonly iconManager: RuleEditorManager;
+	private readonly iconManager: DialogIconManager;
 
 	// Rule
 	private readonly page: Category;
@@ -481,19 +437,13 @@ export default class RuleEditor extends Modal {
 	private constructor(plugin: IconicPlugin, page: Category, rule: RuleItem, callback: RuleEditorCallback | null) {
 		super(plugin.app);
 		this.plugin = plugin;
-		this.iconManager = new RuleEditorManager(plugin);
+		this.iconManager = new DialogIconManager(plugin);
 		this.page = page;
 		this.rule = window.structuredClone(rule);
 		this.callback = callback;
 
 		// Allow hotkeys in dialog
-		for (const command of this.plugin.dialogCommands) if (command.callback) {
-			// @ts-expect-error (Private API)
-			const hotkeys: Hotkey[] = this.app.hotkeyManager?.customKeys?.[command.id] ?? [];
-			for (const hotkey of hotkeys) {
-				this.scope.register(hotkey.modifiers, hotkey.key, command.callback);
-			}
-		}
+		this.plugin.registerDialogHotkeys(this.scope);
 	}
 
 	/**

@@ -107,7 +107,6 @@ export default class RuleManager {
 	private getRuleBases(page: Category): typeof this.plugin.settings.fileRules {
 		switch (page) {
 			default: return this.plugin.settings.fileRules;
-			case 'file': return this.plugin.settings.fileRules;
 			case 'folder': return this.plugin.settings.folderRules;
 		}
 	}
@@ -118,7 +117,6 @@ export default class RuleManager {
 	getPageIcon(page: Category): string {
 		switch (page) {
 			default: return 'lucide-file';
-			case 'file': return 'lucide-file';
 			case 'folder': return 'lucide-folder';
 		}
 	}

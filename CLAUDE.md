@@ -56,7 +56,7 @@ Support managers:
 
 ### Dialogs (`src/dialogs/`)
 
-Modals for icon selection (`IconPicker`), rule management (`RulePicker`, `RuleEditor`), and rule testing (`RuleChecker`).
+Modals for icon selection (`IconPicker`), rule management (`RulePicker`, `RuleEditor`), and rule testing (`RuleChecker`). All dialogs use `DialogIconManager` (exported from `IconManager.ts`) for DOM operations and `IconicPlugin.registerDialogHotkeys(scope)` for hotkey registration.
 
 ### i18n
 

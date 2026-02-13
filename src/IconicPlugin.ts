@@ -1,4 +1,4 @@
-import { Command, Notice, Platform, Plugin, TAbstractFile, TFile, TFolder, View, WorkspaceFloating, WorkspaceLeaf, WorkspaceRoot, getIconIds, getLanguage, normalizePath } from 'obsidian';
+import { Command, Hotkey, Notice, Platform, Plugin, Scope, TAbstractFile, TFile, TFolder, View, WorkspaceFloating, WorkspaceLeaf, WorkspaceRoot, getIconIds, getLanguage, normalizePath } from 'obsidian';
 import IconicSettingTab from 'src/IconicSettingTab';
 import ColorUtils from 'src/ColorUtils';
 import EMOJIS from 'src/Emojis';
@@ -709,6 +709,19 @@ export default class IconicPlugin extends Plugin {
 
 		managers.delete(undefined);
 		for (const manager of managers) manager?.refreshIcons();
+	}
+
+	/**
+	 * Register dialog-related hotkeys into a modal scope.
+	 */
+	registerDialogHotkeys(scope: Scope): void {
+		for (const command of this.dialogCommands) if (command.callback) {
+			// @ts-expect-error (Private API)
+			const hotkeys: Hotkey[] = this.app.hotkeyManager?.customKeys?.[command.id] ?? [];
+			for (const hotkey of hotkeys) {
+				scope.register(hotkey.modifiers, hotkey.key, command.callback);
+			}
+		}
 	}
 
 	/**
@@ -1527,7 +1540,7 @@ export default class IconicPlugin extends Plugin {
 		const isDueForBackup = !backupStat || Date.now() - backupStat.mtime >= HOUR * 3;
 
 		// Loop through backup files
-		for (let i = 10; i--; i === 0) {
+		for (let i = 10; i--;) {
 			if (await adapter.exists(backupPath + i)) {
 				if (i > this.settings.maxBackups) {
 					// Delete any backup numbered higher than the maximum

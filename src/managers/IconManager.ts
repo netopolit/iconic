@@ -295,3 +295,47 @@ export default abstract class IconManager {
 		this.stopMutationObservers();
 	}
 }
+
+/**
+ * Exposes protected {@link IconManager} methods as public for use by dialogs.
+ */
+export class DialogIconManager extends IconManager {
+	constructor(plugin: IconicPlugin) {
+		super(plugin);
+	}
+
+	/**
+	 * @override
+	 */
+	refreshIcon(item: Item | Icon, iconEl: HTMLElement, onClick?: ((event: MouseEvent) => void)): void {
+		super.refreshIcon(item, iconEl, onClick);
+	}
+
+	/**
+	 * @override
+	 */
+	setEventListener<K extends keyof HTMLElementEventMap>(element: HTMLElement, type: K, listener: (this: HTMLElement, event: HTMLElementEventMap[K]) => void, options?: boolean | AddEventListenerOptions): void {
+		super.setEventListener(element, type, listener, options);
+	}
+
+	/**
+	 * @override
+	 */
+	stopEventListeners(): void {
+		super.stopEventListeners();
+	}
+
+	/**
+	 * @override
+	 */
+	setMutationObserver(element: HTMLElement | null, options: MutationObserverInit, callback: (mutation: MutationRecord) => void): void {
+		super.setMutationObserver(element, options, callback);
+	}
+
+	/**
+	 * @override
+	 */
+	stopMutationObservers(): void {
+		super.stopMutationObservers();
+	}
+}
