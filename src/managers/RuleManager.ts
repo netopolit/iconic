@@ -126,7 +126,7 @@ export default class RuleManager {
 	/**
 	 * Create rule definition.
 	 */
-	private defineRule(page: Category, ruleBase: any): RuleItem {
+	private defineRule(page: Category, ruleBase: { id?: string; name?: string; icon?: string; color?: string; match?: string; conditions?: Array<{ source?: string; operator?: string; value?: string }>; enabled?: boolean }): RuleItem {
 		return {
 			id: ruleBase.id ?? '0',
 			name: ruleBase.name ?? '',
@@ -134,8 +134,8 @@ export default class RuleManager {
 			iconDefault: this.getPageIcon(page),
 			icon: ruleBase.icon ?? null,
 			color: ruleBase.color ?? null,
-			match: ruleBase.match ?? 'all',
-			conditions: ruleBase.conditions ?? [],
+			match: (ruleBase.match as RuleItem['match']) ?? 'all',
+			conditions: (ruleBase.conditions as ConditionItem[]) ?? [],
 			enabled: ruleBase.enabled ?? false,
 		}
 	}
@@ -248,7 +248,7 @@ export default class RuleManager {
 		else delete ruleBase.match;
 		if (newRule.conditions.length > 0) {
 			ruleBase.conditions = newRule.conditions.map(({ source, operator, value }) => {
-				const conditionBase: any = {};
+				const conditionBase: Record<string, string> = {};
 				if (source) conditionBase.source = source;
 				if (operator) conditionBase.operator = operator;
 				if (value) conditionBase.value = value;
@@ -303,11 +303,13 @@ export default class RuleManager {
 					this.fileTriggers.clear();
 					return true;
 				}
+				break;
 				case 'folder': if (this.folderRulings.size > 0) {
 					this.folderRulings.clear();
 					this.folderTriggers.clear();
 					return true;
 				}
+				break;
 			}
 			return false;
 		}
@@ -511,13 +513,16 @@ export default class RuleManager {
 					return this.updateRulings(page);
 				}
 			}
+			break;
 			case 'folder': for (const trigger of triggers) {
 				if (this.folderTriggers.has(trigger)) {
 					return this.updateRulings(page);
 				}
 			}
+			break;
 			default: return false;
 		}
+		return false;
 	}
 
 	/**
@@ -565,7 +570,7 @@ export default class RuleManager {
 			: null;
 
 		// Build lowercase frontmatter Map once for O(1) property lookups
-		let fmMap: Map<string, any> | null = null;
+		let fmMap: Map<string, unknown> | null = null;
 		if (metadata?.frontmatter) {
 			fmMap = new Map();
 			for (const key of Object.keys(metadata.frontmatter)) {
@@ -585,7 +590,7 @@ export default class RuleManager {
 				const propId = condition.source.replace('property:', '');
 				if (fmMap) {
 					const fmValue = fmMap.get(propId.toLowerCase());
-					if (fmValue !== undefined) source = fmValue;
+					if (fmValue !== undefined) source = fmValue as typeof source;
 				}
 			} else switch (condition.source) {
 				case 'icon': {

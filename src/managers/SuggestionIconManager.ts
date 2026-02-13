@@ -33,8 +33,6 @@ export default class SuggestionIconManager extends IconManager {
 	 * Intercept property key/value suggestion popovers.
 	 */
 	private setupAbstractSuggestionProxies(): void {
-		const manager = this;
-
 		// Store original method
 		// @ts-expect-error (Private API)
 		this.showAbstractSuggestionsOriginal = AbstractInputSuggest.prototype.showSuggestions;
@@ -42,26 +40,26 @@ export default class SuggestionIconManager extends IconManager {
 		// Catch popovers before they open
 		// @ts-expect-error (Private API)
 		this.showAbstractSuggestionsProxy = new Proxy(AbstractInputSuggest.prototype.showSuggestions, {
-			apply(showSuggestions, popover: AbstractInputSuggest<any>, args) {
-				if (manager.isDisabled()) {
+			apply: (showSuggestions, popover: AbstractInputSuggest<unknown>, args) => {
+				if (this.isDisabled()) {
 					return showSuggestions.call(popover, ...args);
 				}
 
 				// Proxy renderSuggestion() for each instance
-				if (popover.renderSuggestion !== manager.renderAbstractSuggestionProxy) {
-					manager.renderAbstractSuggestionProxy = new Proxy(popover.renderSuggestion, {
-						apply(renderSuggestion, popover: AbstractInputSuggest<any>, args: [any, HTMLElement]) {
+				if (popover.renderSuggestion !== this.renderAbstractSuggestionProxy) {
+					this.renderAbstractSuggestionProxy = new Proxy(popover.renderSuggestion, {
+						apply: (renderSuggestion, popover: AbstractInputSuggest<unknown>, args: [unknown, HTMLElement]) => {
 							// Call base method first to pre-populate elements
 							const returnValue = renderSuggestion.call(popover, ...args);
-							if (manager.isDisabled()) return returnValue;
+							if (this.isDisabled()) return returnValue;
 
 							const [value, el] = args;
 							if (!value || !(el instanceof HTMLElement)) return;
 
-							switch (manager.getSuggestionType(value)) {
-								case FILE_SUGGESTION: manager.refreshFileIcon(value, el); break;
-								case TAG_SUGGESTION: manager.refreshTagIcon(value, el); break;
-								case PROPERTY_SUGGESTION: manager.refreshPropertyIcon(value, el); break;
+							switch (this.getSuggestionType(value)) {
+								case FILE_SUGGESTION: this.refreshFileIcon(value, el); break;
+								case TAG_SUGGESTION: this.refreshTagIcon(value, el); break;
+								case PROPERTY_SUGGESTION: this.refreshPropertyIcon(value, el); break;
 							}
 
 							return returnValue;
@@ -69,7 +67,7 @@ export default class SuggestionIconManager extends IconManager {
 					});
 
 					// Replace original method
-					popover.renderSuggestion = manager.renderAbstractSuggestionProxy;
+					popover.renderSuggestion = this.renderAbstractSuggestionProxy;
 				}
 
 				return showSuggestions.call(popover, ...args);
@@ -85,8 +83,6 @@ export default class SuggestionIconManager extends IconManager {
 	 * Intercept editor suggestion popovers.
 	 */
 	private setupEditorSuggestionProxies(): void {
-		const manager = this;
-
 		// Store original method
 		// @ts-expect-error (Private API)
 		this.showEditorSuggestionsOriginal = EditorSuggest.prototype.showSuggestions;
@@ -94,26 +90,26 @@ export default class SuggestionIconManager extends IconManager {
 		// Catch popovers before they open
 		// @ts-expect-error (Private API)
 		this.showEditorSuggestionsProxy = new Proxy(EditorSuggest.prototype.showSuggestions, {
-			apply(showSuggestions, popover: EditorSuggest<any>, args) {
-				if (manager.isDisabled()) {
+			apply: (showSuggestions, popover: EditorSuggest<unknown>, args) => {
+				if (this.isDisabled()) {
 					return showSuggestions.call(popover, ...args);
 				}
 
 				// Proxy renderSuggestion() for each instance
-				if (popover.renderSuggestion !== manager.renderEditorSuggestionProxy) {
-					manager.renderEditorSuggestionProxy = new Proxy(popover.renderSuggestion, {
-						apply(renderSuggestion, popover: EditorSuggest<any>, args: [any, HTMLElement]) {
+				if (popover.renderSuggestion !== this.renderEditorSuggestionProxy) {
+					this.renderEditorSuggestionProxy = new Proxy(popover.renderSuggestion, {
+						apply: (renderSuggestion, popover: EditorSuggest<unknown>, args: [unknown, HTMLElement]) => {
 							// Call base method first to pre-populate elements
 							const returnValue = renderSuggestion.call(popover, ...args);
-							if (manager.isDisabled()) return returnValue;
+							if (this.isDisabled()) return returnValue;
 
 							const [value, el] = args;
 							if (!value || !(el instanceof HTMLElement)) return;
 
-							switch (manager.getSuggestionType(value)) {
-								case FILE_SUGGESTION: manager.refreshFileIcon(value, el); break;
-								case TAG_SUGGESTION: manager.refreshTagIcon(value, el); break;
-								case PROPERTY_SUGGESTION: manager.refreshPropertyIcon(value, el); break;
+							switch (this.getSuggestionType(value)) {
+								case FILE_SUGGESTION: this.refreshFileIcon(value, el); break;
+								case TAG_SUGGESTION: this.refreshTagIcon(value, el); break;
+								case PROPERTY_SUGGESTION: this.refreshPropertyIcon(value, el); break;
 							}
 
 							return returnValue;
@@ -121,7 +117,7 @@ export default class SuggestionIconManager extends IconManager {
 					});
 
 					// Replace original method
-					popover.renderSuggestion = manager.renderEditorSuggestionProxy;
+					popover.renderSuggestion = this.renderEditorSuggestionProxy;
 				}
 
 				return showSuggestions.call(popover, ...args);
@@ -136,16 +132,18 @@ export default class SuggestionIconManager extends IconManager {
 	/**
 	 * Determine which type of suggestion this is.
 	 */
-	private getSuggestionType(value: any): string | null {
+	private getSuggestionType(value: unknown): string | null {
 		if (!value || typeof value !== 'object') {
 			return UNKNOWN_SUGGESTION;
-		} else if (value.type === 'file' && value.file instanceof TFile) {
+		}
+		const v = value as Record<string, unknown>;
+		if (v.type === 'file' && v.file instanceof TFile) {
 			return FILE_SUGGESTION;
-		} else if (value.type === 'alias' && value.file instanceof TFile) {
+		} else if (v.type === 'alias' && v.file instanceof TFile) {
 			return FILE_SUGGESTION;
-		} else if (value.tag) {
+		} else if (v.tag) {
 			return TAG_SUGGESTION;
-		} else if (value.widget) {
+		} else if (v.widget) {
 			return PROPERTY_SUGGESTION;
 		} else {
 			return UNKNOWN_SUGGESTION;
@@ -155,8 +153,8 @@ export default class SuggestionIconManager extends IconManager {
 	/**
 	 * Refresh a file suggestion icon.
 	 */
-	private refreshFileIcon(value: any, el: HTMLElement): void {
-		const fileId: string = value?.file.path;
+	private refreshFileIcon(value: unknown, el: HTMLElement): void {
+		const fileId: string = ((value as Record<string, unknown>)?.file as TFile)?.path;
 		if (!fileId) return;
 		const file = this.plugin.getFileItem(fileId);
 		if (!file) return;
@@ -177,11 +175,12 @@ export default class SuggestionIconManager extends IconManager {
 	/**
 	 * Refresh a property suggestion icon.
 	 */
-	private refreshPropertyIcon(value: any, el: HTMLElement): void {
-		switch (value?.type) {
+	private refreshPropertyIcon(value: unknown, el: HTMLElement): void {
+		const v = value as Record<string, unknown>;
+		switch (v?.type) {
 			// Property suggestions
 			case 'text': {
-				const propId = value?.text;
+				const propId = v?.text as string;
 				if (propId) {
 					const prop = this.plugin.getPropertyItem(propId);
 					const iconEl = el.find(':scope > .suggestion-icon > .suggestion-flair');
@@ -195,7 +194,7 @@ export default class SuggestionIconManager extends IconManager {
 			case 'formula': break;
 			// BASES: Property suggestions
 			case 'note': {
-				const propId = value?.name;
+				const propId = v?.name as string;
 				if (propId) {
 					const prop = this.plugin.getPropertyItem(propId);
 					const iconEl = el.find(':scope > .suggestion-icon > .suggestion-flair');
@@ -209,8 +208,8 @@ export default class SuggestionIconManager extends IconManager {
 	/**
 	 * Refresh a tag suggestion icon.
 	 */
-	private refreshTagIcon(value: any, el: HTMLElement): void {
-		const tagId = value?.tag;
+	private refreshTagIcon(value: unknown, el: HTMLElement): void {
+		const tagId = (value as Record<string, unknown>)?.tag as string;
 		if (tagId) {
 			el.addClass('mod-complex', 'iconic-item');
 			const tag = this.plugin.getTagItem(tagId);

@@ -10,17 +10,15 @@ export default class MenuManager {
 	private showAtPositionProxy: typeof Menu.prototype.showAtPosition;
 
 	constructor() {
-		const manager = this;
-
 		// Store original method
 		this.showAtPositionOriginal = Menu.prototype.showAtPosition;
 
 		// Catch menus as they open
 		this.showAtPositionProxy = new Proxy(Menu.prototype.showAtPosition, {
-			apply(showAtPosition, menu: Menu, args: [position: MenuPositionDef, doc?: Document]) {
-				manager.menu = menu;
-				if (manager.queuedActions.length > 0) {
-					manager.runQueuedActions.call(manager); // Menu is unhappy with your customer service
+			apply: (showAtPosition, menu: Menu, args: [position: MenuPositionDef, doc?: Document]) => {
+				this.menu = menu;
+				if (this.queuedActions.length > 0) {
+					this.runQueuedActions();
 				}
 				return showAtPosition.call(menu, ...args);
 			}

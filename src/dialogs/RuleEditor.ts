@@ -267,11 +267,6 @@ const VALUE_OPERATORS = [
 	'!hasValue',
 ];
 
-const PROPERTY_OPERATORS = [
-	'hasProperty',
-	'!hasProperty',
-];
-
 const WEEKDAY_VALUES = [
 	1,
 	2,

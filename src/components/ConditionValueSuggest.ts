@@ -1,6 +1,13 @@
-import { AbstractInputSuggest, TextComponent, prepareFuzzySearch } from 'obsidian';
+import { AbstractInputSuggest, SearchMatches, TextComponent, prepareFuzzySearch } from 'obsidian';
 import IconicPlugin, { Category } from 'src/IconicPlugin';
 import { ConditionItem } from 'src/managers/RuleManager';
+
+interface SuggestionItem {
+	type: string;
+	matches: SearchMatches;
+	score: number;
+	text: string;
+}
 
 const SUGGEST_FILE_NAMES = 'file-name';
 const SUGGEST_FILE_FILENAMES = 'file-filename';
@@ -13,7 +20,7 @@ const SUGGEST_FOLDER_PATHS = 'folder-path';
 /**
  * Popover that suggests values for a rule condition.
  */
-export default class ConditionValueSuggest extends AbstractInputSuggest<any> {
+export default class ConditionValueSuggest extends AbstractInputSuggest<SuggestionItem> {
 	private readonly page: Category;
 	private readonly condition: ConditionItem;
 	private readonly inputComponent: TextComponent;
@@ -55,9 +62,9 @@ export default class ConditionValueSuggest extends AbstractInputSuggest<any> {
 	/**
 	 * @override
 	 */
-	protected getSuggestions(query: string): any[] | Promise<any[]> {
+	protected getSuggestions(query: string): SuggestionItem[] | Promise<SuggestionItem[]> {
 		const currentValue = this.inputComponent.getValue();
-		const suggestions: any[] = [];
+		const suggestions: SuggestionItem[] = [];
 		const fuzzySearch = prepareFuzzySearch(query);
 
 		switch (this.getSuggestionType()) {
@@ -174,14 +181,14 @@ export default class ConditionValueSuggest extends AbstractInputSuggest<any> {
 	/**
 	 * @override
 	 */
-	renderSuggestion(suggestion: any, el: HTMLElement): void {
+	renderSuggestion(suggestion: SuggestionItem, el: HTMLElement): void {
 		el.setText(suggestion.text);
 	}
 
 	/**
 	 * @override
 	 */
-	selectSuggestion(suggestion: any): void {
+	selectSuggestion(suggestion: SuggestionItem): void {
 		this.inputComponent.setValue(suggestion.text);
 		this.inputComponent.onChanged();
 		this.close();
