@@ -93,6 +93,10 @@ Iconic and Iconize can both change the icons & colors of files & folders, and au
 
 Sort of, just expect a few visual bugs! They currently do some fighting over control of tab icons and the Bookmarks pane.
 
+## Credits
+
+This is a fork of [Iconic](https://github.com/gfxholo/iconic) by [Holo](https://github.com/gfxholo).
+
 ## License
 
 This plugin is released under an [MIT No Attribution](https://choosealicense.com/licenses/mit-0/) license, which means you're free to modify and share its source code without crediting the authors of this repository. It also protects those authors from liability for damages, so I recommend using a similar license if you republish this code.
