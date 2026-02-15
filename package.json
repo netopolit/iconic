@@ -10,7 +10,7 @@
 		"version": "node version-bump.mjs && git add manifest.json versions.json"
 	},
 	"keywords": [],
-	"author": "Holo",
+	"author": "netopolit",
 	"license": "MIT-0",
 	"devDependencies": {
 		"@codemirror/language": "^6.11.2",
