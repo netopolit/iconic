@@ -41,7 +41,7 @@ No test framework is configured. Type-checking via `tsc` is the primary automate
 
 ### Manager Pattern
 
-Specialized **IconManager** subclasses in `src/managers/` each handle a distinct UI area (tabs, files, bookmarks, tags, properties, ribbon, etc.). The base class `IconManager.ts` provides:
+Specialized **IconManager** subclasses in `src/managers/` each handle a distinct UI area: `AppIconManager` (title bar buttons), `TabIconManager`, `FileIconManager`, `EditorIconManager` (inline titles), `BookmarkIconManager`, `TagIconManager`, `PropertyIconManager`, `RibbonIconManager`, `SuggestionIconManager` (quick switcher), `SuggestionDialogIconManager`. The base class `IconManager.ts` provides:
 - `refreshIcon()` — renders an icon/emoji with optional color into a DOM element
 - `changeIconItem()` / `removeIconItem()` / `editRuleItem()` — shared menu item callbacks used by all managers
 - `setContextMenu()` — guards a contextmenu listener behind the `showMenuActions` setting
@@ -53,14 +53,24 @@ Specialized **IconManager** subclasses in `src/managers/` each handle a distinct
 Support managers:
 - `MenuManager` — Intercepts context menus via Proxy pattern to inject "Change icon" items
 - `RuleManager` — Evaluates conditional rules for automated file/folder icons. Per-item icons/colors take priority over rules (act as exceptions); rule evaluation is skipped when an item has an explicit icon or color
+- `IconPackManager` — Manages icon pack installation and removal
 
 ### Dialogs (`src/dialogs/`)
 
-Modals for icon selection (`IconPicker`), rule management (`RulePicker`, `RuleEditor`), and rule testing (`RuleChecker`). All dialogs use `DialogIconManager` (exported from `IconManager.ts`) for DOM operations and `IconicPlugin.registerDialogHotkeys(scope)` for hotkey registration.
+Modals for icon selection (`IconPicker`), icon pack browsing (`IconPackBrowser`), rule management (`RulePicker`, `RuleEditor`), and rule testing (`RuleChecker`). All dialogs use `DialogIconManager` (exported from `IconManager.ts`) for DOM operations and `IconicPlugin.registerDialogHotkeys(scope)` for hotkey registration.
 
-### i18n
+### Components (`src/components/`)
 
-`src/Strings.ts` loads translations from `i18n/*.json` (10 languages). Placeholders: `{#}` for numbers, `{text}` for strings.
+Reusable UI components: `ConditionSetting`, `ConditionValueSuggest`, `RuleNameSuggest`, `RuleSetting` — used by the rule editor dialogs.
+
+### Data Modules
+
+- `src/Emojis.ts` — Emoji dataset
+- `src/IconPacks.ts` — Icon pack metadata and utilities
+
+### Strings
+
+`src/Strings.ts` — Static class with all user-facing strings as properties (English only). Placeholders: `{#}` for numbers, `{text}` for strings.
 
 ### Key Patterns
 

@@ -8,7 +8,7 @@ import ConditionSetting from 'src/components/ConditionSetting';
 import ConditionValueSuggest from 'src/components/ConditionValueSuggest';
 import RuleNameSuggest from 'src/components/RuleNameSuggest';
 
-export type OperatorValueType = 'text' | 'regex' | 'number' | 'datetime' | 'date' | 'time' | 'weekday' | 'month' | 'color' | 'hex';
+type OperatorValueType = 'text' | 'regex' | 'number' | 'datetime' | 'date' | 'time' | 'weekday' | 'month' | 'color' | 'hex';
 
 const FILE_SOURCES: ReadonlySet<string> = new Set([
 	'icon',
@@ -412,7 +412,7 @@ const OPERATOR_VALUE_TYPES: Record<string, OperatorValueType> = {
 /**
  * Callback for setting icon & color of a single item.
  */
-export interface RuleEditorCallback {
+interface RuleEditorCallback {
 	(rule: RuleItem | null): void;
 }
 

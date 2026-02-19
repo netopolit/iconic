@@ -22,7 +22,8 @@ export default class TabIconManager extends IconManager {
 				const tab = tabs[i];
 				if (!tab) return;
 				if (tab.category === 'file') {
-					const rule = this.plugin.ruleManager.checkRuling('file', tab.id) ?? tab;
+					const hasExplicitIcon = tab.icon || tab.color;
+					const rule = hasExplicitIcon ? tab : (this.plugin.ruleManager.checkRuling('file', tab.id) ?? tab);
 					rule.iconDefault = rule.iconDefault ?? 'lucide-file';
 					// @ts-expect-error (Private API)
 					this.refreshIcon(rule, item.iconEl);
@@ -50,8 +51,9 @@ export default class TabIconManager extends IconManager {
 			if (!tabEl || !iconEl || tab.id === 'webviewer') continue;
 
 			// Check for an icon ruling
+			const hasExplicitIcon = tab.icon || tab.color;
 			const rule = tab.category === 'file'
-				? this.plugin.ruleManager.checkRuling('file', tab.id, unloading) ?? tab
+				? (hasExplicitIcon ? tab : (this.plugin.ruleManager.checkRuling('file', tab.id, unloading) ?? tab))
 				: tab;
 
 			if (tab.isRoot && this.plugin.isSettingEnabled('clickableIcons')) {

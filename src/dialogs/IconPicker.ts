@@ -11,14 +11,14 @@ const COLOR_KEY_SET = new Set(COLOR_KEYS);
 /**
  * Callback for setting icon & color of a single item.
  */
-export interface IconPickerCallback {
+interface IconPickerCallback {
 	(icon: string | null, color: string | null): void;
 }
 
 /**
  * Callback for setting icons & colors of multiple items at once.
  */
-export interface MultiIconPickerCallback {
+interface MultiIconPickerCallback {
 	(icon: string | null | undefined, color: string | null | undefined): void;
 }
 
