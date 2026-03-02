@@ -30,7 +30,7 @@ No test framework is configured. Type-checking via `tsc` is the primary automate
 - The settings tab extends `PluginSettingTab` with `display()` to render settings UI
 - Access to Obsidian internal APIs uses `@ts-expect-error` — these are fragile and may break across updates
 - The plugin runs on both desktop and mobile; use `Platform.isDesktop` / `Platform.isMobile` for branching
-- `manifest.json` declares plugin metadata and minimum Obsidian version (currently 1.11.0)
+- `manifest.json` declares plugin metadata and minimum Obsidian version (currently 1.12.4)
 - Build output is `main.js` (CJS, ES2021 target) in the project root; distributed alongside `manifest.json` and `styles.css`
 
 ## Architecture
@@ -63,8 +63,13 @@ Modals for icon selection (`IconPicker`), icon pack browsing (`IconPackBrowser`)
 
 Reusable UI components: `ConditionSetting`, `ConditionValueSuggest`, `RuleNameSuggest`, `RuleSetting` — used by the rule editor dialogs.
 
+### Settings UI
+
+`src/IconicSettingTab.ts` — Settings tab extending `PluginSettingTab`, renders the plugin settings UI.
+
 ### Data Modules
 
+- `src/ColorUtils.ts` — `COLORS` map (named colors to CSS variables), named CSS color lookups, and `ColorUtils` class for color conversion (`toRgb`, `toHslArray`)
 - `src/Emojis.ts` — Emoji dataset
 - `src/IconPacks.ts` — Icon pack metadata and utilities
 
@@ -76,5 +81,5 @@ Reusable UI components: `ConditionSetting`, `ConditionValueSuggest`, `RuleNameSu
 
 - **Private APIs**: Accessed via `@ts-expect-error` — fragile across Obsidian updates
 - **DOM lifecycle**: All MutationObservers and event listeners are tracked per-manager and cleaned up on unload
-- **Debouncing**: `FileIconManager` batches refresh calls with timers for rapid vault changes
+- **Debouncing**: `FileIconManager`, `TabIconManager`, and `IconicPlugin` use Obsidian's `debounce()` utility to coalesce rapid events
 - **Backup system**: Automatic rolling backups of `data.json` with corruption detection

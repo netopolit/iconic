@@ -1,4 +1,4 @@
-import { Platform } from 'obsidian';
+import { debounce, Platform } from 'obsidian';
 import IconicPlugin, { Category, FileItem, TabItem } from 'src/IconicPlugin';
 import IconManager from 'src/managers/IconManager';
 import RuleEditor from 'src/dialogs/RuleEditor';
@@ -7,7 +7,7 @@ import RuleEditor from 'src/dialogs/RuleEditor';
  * Handles icons in workspace tab headers.
  */
 export default class TabIconManager extends IconManager {
-	private refreshTimerId: number;
+	private debouncedRefresh = debounce(() => this.refreshIcons(), 50, true);
 
 	constructor(plugin: IconicPlugin) {
 		super(plugin);
@@ -26,9 +26,17 @@ export default class TabIconManager extends IconManager {
 					const rule = hasExplicitIcon ? tab : (this.plugin.ruleManager.checkRuling('file', tab.id) ?? tab);
 					rule.iconDefault = rule.iconDefault ?? 'lucide-file';
 					// @ts-expect-error (Private API)
+					delete item.iconEl.dataset.iconicId;
+					// @ts-expect-error (Private API)
+					delete item.iconEl.dataset.iconicColor;
+					// @ts-expect-error (Private API)
 					this.refreshIcon(rule, item.iconEl);
 				} else {
 					tab.iconDefault = tab.iconDefault ?? 'lucide-file';
+					// @ts-expect-error (Private API)
+					delete item.iconEl.dataset.iconicId;
+					// @ts-expect-error (Private API)
+					delete item.iconEl.dataset.iconicColor;
 					// @ts-expect-error (Private API)
 					this.refreshIcon(tab, item.iconEl);
 				}
@@ -59,6 +67,8 @@ export default class TabIconManager extends IconManager {
 			if (tab.isRoot && this.plugin.isSettingEnabled('clickableIcons')) {
 				if (tab.category === 'file') {
 					const file = this.plugin.getFileItem(tab.id);
+					delete iconEl.dataset.iconicId;
+					delete iconEl.dataset.iconicColor;
 					this.refreshIcon(rule, iconEl, event => {
 						this.plugin.openIconPicker([file],
 							(icon, color) => this.plugin.saveFileIcon(file, icon, color),
@@ -66,6 +76,8 @@ export default class TabIconManager extends IconManager {
 						event.stopPropagation();
 					});
 				} else {
+					delete iconEl.dataset.iconicId;
+					delete iconEl.dataset.iconicColor;
 					this.refreshIcon(rule, iconEl, event => {
 						this.plugin.openIconPicker([tab],
 							(icon, color) => this.plugin.saveTabIcon(tab, icon, color),
@@ -74,6 +86,8 @@ export default class TabIconManager extends IconManager {
 					});
 				}
 			} else {
+				delete iconEl.dataset.iconicId;
+				delete iconEl.dataset.iconicColor;
 				this.refreshIcon(rule, iconEl);
 			}
 
@@ -143,14 +157,6 @@ export default class TabIconManager extends IconManager {
 				}
 			}
 		}
-	}
-
-	/**
-	 * Debounced version of refreshIcons to coalesce rapid layout/leaf-change events.
-	 */
-	private debouncedRefresh(): void {
-		window.clearTimeout(this.refreshTimerId);
-		this.refreshTimerId = window.setTimeout(() => this.refreshIcons(), 50);
 	}
 
 	/**
@@ -228,7 +234,7 @@ export default class TabIconManager extends IconManager {
 	 * @override
 	 */
 	unload(): void {
-		window.clearTimeout(this.refreshTimerId);
+		this.debouncedRefresh.cancel();
 		this.refreshIcons(true);
 		super.unload();
 	}

@@ -1,4 +1,4 @@
-import { WorkspaceLeaf } from 'obsidian';
+import { debounce, WorkspaceLeaf } from 'obsidian';
 import IconicPlugin, { FileItem } from 'src/IconicPlugin';
 import IconManager from 'src/managers/IconManager';
 import RuleEditor from 'src/dialogs/RuleEditor';
@@ -8,11 +8,10 @@ import RuleEditor from 'src/dialogs/RuleEditor';
  */
 export default class FileIconManager extends IconManager {
 	private containerEl: HTMLElement;
-	/**
-	 * Tracks pending refresh operations to prevent multiple rapid refreshes when expanding folders.
-	 */
-	private refreshTimerId: number;
-	private containerRefreshTimerId: number;
+	private debouncedChildRefresh = debounce((files: FileItem[], itemEls: HTMLElement[]) => {
+		this.refreshChildIcons(files, itemEls);
+	}, 100, true);
+	private debouncedContainerRefresh = debounce(() => this.refreshIcons(), 100, true);
 
 	constructor(plugin: IconicPlugin) {
 		super(plugin);
@@ -135,7 +134,7 @@ export default class FileIconManager extends IconManager {
 					if (shouldRefreshChildren) {
 						const childItemEls = itemEl.findAll(':scope > .tree-item-children > .tree-item');
 						if (file.items && childItemEls) {
-							this.debouncedRefresh(file.items, childItemEls);
+							this.debouncedChildRefresh(file.items, childItemEls);
 						}
 					}
 				});
@@ -180,25 +179,6 @@ export default class FileIconManager extends IconManager {
 				}
 			});
 		}
-	}
-
-	/**
-	 * Debounced version of refreshChildIcons that prevents multiple rapid refreshes.
-	 * Waits for 100ms of no new refresh requests before executing.
-	 */
-	private debouncedRefresh(files: FileItem[], itemEls: HTMLElement[]): void {
-		window.clearTimeout(this.refreshTimerId);
-		this.refreshTimerId = window.setTimeout(() => {
-			this.refreshChildIcons(files, itemEls);
-		}, 100);
-	}
-
-	/**
-	 * Debounced version of refreshIcons for container-level mutations (data-path changes, new tree items).
-	 */
-	private debouncedContainerRefresh(): void {
-		window.clearTimeout(this.containerRefreshTimerId);
-		this.containerRefreshTimerId = window.setTimeout(() => this.refreshIcons(), 100);
 	}
 
 	/**
@@ -254,8 +234,8 @@ export default class FileIconManager extends IconManager {
 	 * Clear refresh timer in addition to standard cleanup.
 	 */
 	unload(): void {
-		window.clearTimeout(this.refreshTimerId);
-		window.clearTimeout(this.containerRefreshTimerId);
+		this.debouncedChildRefresh.cancel();
+		this.debouncedContainerRefresh.cancel();
 		this.refreshIcons(true);
 		super.unload();
 	}

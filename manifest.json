@@ -2,7 +2,7 @@
 	"id": "iconic",
 	"name": "Iconic",
 	"version": "1.2.0",
-	"minAppVersion": "1.11.0",
+	"minAppVersion": "1.12.4",
 	"description": "Customize your icons and their colors directly from the UI, including tabs, files & folders, bookmarks, tags, properties, and ribbon commands.",
 	"author": "netopolit",
 	"authorUrl": "https://github.com/netopolit",

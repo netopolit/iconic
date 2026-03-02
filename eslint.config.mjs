@@ -1,6 +1,6 @@
 import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
-import stylisticJs from '@stylistic/eslint-plugin-js';
+import stylistic from '@stylistic/eslint-plugin';
 import globals from 'globals';
 
 export default tseslint.config(
@@ -8,13 +8,13 @@ export default tseslint.config(
 	tseslint.configs.recommended,
 	{
 		languageOptions: { globals: globals.node },
-		plugins: { '@stylistic/js': stylisticJs },
+		plugins: { '@stylistic': stylistic },
 		rules: {
 			'no-prototype-builtins': 'off',
 			'no-unused-vars': 'off',
 			'no-useless-assignment': 'off',
 			'prefer-const': 'off',
-			'@stylistic/js/quotes': ['error', 'single', { avoidEscape: true }],
+			'@stylistic/quotes': ['error', 'single', { avoidEscape: true }],
 			'@typescript-eslint/ban-ts-comment': 'off',
 			'@typescript-eslint/no-empty-function': 'off',
 			'@typescript-eslint/no-unused-expressions': 'off',

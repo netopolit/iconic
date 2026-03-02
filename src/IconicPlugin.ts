@@ -1,4 +1,4 @@
-import { Command, Hotkey, Notice, Platform, Plugin, Scope, TAbstractFile, TFile, TFolder, View, WorkspaceFloating, WorkspaceLeaf, WorkspaceRoot, getIconIds, getLanguage, normalizePath } from 'obsidian';
+import { Command, debounce, Hotkey, Notice, Platform, Plugin, Scope, TAbstractFile, TFile, TFolder, View, WorkspaceFloating, WorkspaceLeaf, WorkspaceRoot, getIconIds, getLanguage, normalizePath } from 'obsidian';
 import IconicSettingTab from 'src/IconicSettingTab';
 import ColorUtils from 'src/ColorUtils';
 import EMOJIS from 'src/Emojis';
@@ -61,7 +61,7 @@ export interface Item extends Icon {
 	category: Category;
 	iconDefault: string | null;
 }
-export type AppItem = Item;
+type AppItem = Item;
 export interface TabItem extends Item {
 	isActive: boolean;
 	isRoot: boolean;
@@ -215,7 +215,6 @@ export default class IconicPlugin extends Plugin {
 	suggestionDialogIconManager?: SuggestionDialogIconManager;
 	dialogCommands: Command[] = [];
 	private isSaving = false;
-	private saveTimerId = 0;
 	private readonly splitFilePathCache = new Map<string, { path: string, tree: string, filename: string, basename: string, extension: string, subpath: string }>();
 
 	/**
@@ -1503,10 +1502,7 @@ export default class IconicPlugin extends Plugin {
 	/**
 	 * Save settings to storage (debounced).
 	 */
-	saveSettings(): void {
-		window.clearTimeout(this.saveTimerId);
-		this.saveTimerId = window.setTimeout(() => this.flushSave(), 500);
-	}
+	saveSettings = debounce(() => this.flushSave(), 500, true);
 
 	/**
 	 * Save settings to storage after pruning deleted items.
@@ -1661,7 +1657,7 @@ export default class IconicPlugin extends Plugin {
 	 * @override
 	 */
 	onunload(): void {
-		window.clearTimeout(this.saveTimerId);
+		this.saveSettings.cancel();
 		this.iconPackManager.unload();
 		this.menuManager.unload();
 		this.ruleManager.unload();
